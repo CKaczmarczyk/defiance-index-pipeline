@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Candidate indices and ETFs for Defiance — scored, weighted, with trailing returns.">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}*{box-sizing:border-box}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Index Pipeline</title>
+<style>
+/* Layout: markets-intelligence terminal — sticky control bar, adjustable scoring rail, ranked idea cards */
+:root{
+  --bg:#f3f4f1; --surface:#ffffff; --surface-2:#eceeea; --ink:#171a1f; --muted:#5d636a;
+  --line:#dadcd5; --accent:#b2832c; --accent-soft:#e7d9b4;
+  --good:#1f8a5b; --warn:#bd7f1e; --crit:#c1433a;
+  --watch:#6b7280; --validate:#2f6f8f; --pitch:#1f8a5b;
+  --shadow:0 1px 2px rgba(20,22,28,.06),0 6px 20px rgba(20,22,28,.06);
+  --r:12px;
+  --display:'Fraunces',Georgia,serif;
+  --body:'IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111419; --surface:#191d24; --surface-2:#222731; --ink:#e9ebe6; --muted:#9aa1aa;
+  --line:#2b313b; --accent:#d8ab4d; --accent-soft:#3a3320;
+  --good:#35b07a; --warn:#d6a23f; --crit:#e0675c;
+  --watch:#8891a0; --validate:#5aa2c4; --pitch:#35b07a;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#111419; --surface:#191d24; --surface-2:#222731; --ink:#e9ebe6; --muted:#9aa1aa;
+  --line:#2b313b; --accent:#d8ab4d; --accent-soft:#3a3320;
+  --good:#35b07a; --warn:#d6a23f; --crit:#e0675c;
+  --watch:#8891a0; --validate:#5aa2c4; --pitch:#35b07a;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1180px;margin:0 auto}
+h1,h2,h3{text-wrap:balance;margin:0}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;font-size:11px;color:var(--muted)}
+
+/* header */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.head-inner{padding-block:14px;display:flex;flex-direction:column;gap:12px}
+.title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(22px,3.4vw,30px);letter-spacing:-.01em}
+h1 .sub{display:block;font-family:var(--body);font-weight:400;font-size:13px;color:var(--muted);letter-spacing:0;margin-top:2px}
+.theme-btn{flex:none;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-family:var(--mono);font-size:12px;cursor:pointer}
+.theme-btn:hover{border-color:var(--accent)}
+
+/* kpi strip */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.kpi .n{font-family:var(--mono);font-size:21px;font-weight:600;letter-spacing:-.02em}
+.kpi .k{font-size:11px;color:var(--muted);margin-top:1px}
+.kpi.accent .n{color:var(--accent)}
+
+/* controls */
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding-block:14px}
+.search{flex:1 1 200px;min-width:0;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 11px}
+.search input{border:0;background:transparent;color:var(--ink);font-family:var(--body);font-size:14px;width:100%;outline:none}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.chip{font-family:var(--mono);font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;user-select:none}
+.chip[aria-pressed="true"]{color:var(--ink);border-color:var(--accent);background:var(--accent-soft)}
+select{font-family:var(--mono);font-size:12px;padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+
+/* body grid */
+.main{display:grid;grid-template-columns:230px 1fr;gap:18px;padding-block:18px 40px;align-items:start}
+@media (max-width:760px){.main{grid-template-columns:1fr;gap:12px}.kpis{grid-template-columns:repeat(2,1fr)}header{position:static}.cards{order:1}.rail{order:2;padding:12px}.card-head{padding:12px 14px}.body{padding:14px}.w input[type=range]{height:14px}.hrow{grid-template-columns:56px 1fr 30px 26px;gap:6px}.hx{width:26px;font-size:18px;padding:6px 0}.wsl{height:14px}.hadd{padding:8px 9px}.hadd .an{font-size:12px}.hsearch{padding:9px 10px;font-size:13px}.hres{max-height:260px}}
+
+/* weights rail */
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 150px);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow)}
+@media (max-width:760px){.rail{position:static}}
+.rail h2{font-family:var(--body);font-size:13px;font-weight:600;letter-spacing:.01em;display:flex;justify-content:space-between;align-items:center}
+.rail .hint{font-size:11px;color:var(--muted);margin:6px 0 12px}
+.w{margin-bottom:11px}
+.w label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.w label span:last-child{font-family:var(--mono);color:var(--accent)}
+.w input[type=range]{width:100%;accent-color:var(--accent);height:4px}
+.reset{margin-top:4px;width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:7px;font-family:var(--mono);font-size:11px;cursor:pointer}
+.reset:hover{color:var(--ink);border-color:var(--accent)}
+
+/* cards */
+.cards{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.card-head{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:14px 16px;cursor:pointer}
+.rank{font-family:var(--mono);font-size:13px;color:var(--muted);width:26px;text-align:right}
+.idhead{min-width:0}
+.idhead .name{font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tkr{font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid var(--accent);padding:1px 6px;border-radius:5px}
+.idhead .meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dot{width:3px;height:3px;border-radius:50%;background:var(--muted);opacity:.5}
+.cat{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:5px;background:var(--surface-2);color:var(--muted)}
+.stage{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;color:#fff;white-space:nowrap}
+.stage.watch{background:var(--watch)}.stage.validate{background:var(--validate)}.stage.pitch{background:var(--pitch)}
+.score{text-align:right;flex:none}
+.score .big{font-family:var(--mono);font-size:26px;font-weight:600;line-height:1;letter-spacing:-.02em}
+.score .lab{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.flagmark{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:2px;vertical-align:middle}
+
+/* expanded body */
+.body{border-top:1px solid var(--line);padding:16px;display:none;gap:16px;grid-template-columns:1fr 200px}
+.card.open .body{display:grid}
+@media (max-width:620px){.body{grid-template-columns:1fr}}
+.card-head .chev{display:none}
+.field{margin-bottom:12px}
+.field .ft{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:3px}
+.field .fv{font-size:13.5px}
+.flagbox{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);border-radius:8px;padding:9px 11px;font-size:12.5px}
+.flagbox .ft{color:var(--warn)}
+.scorebox{background:var(--surface-2);border-radius:10px;padding:12px}
+.scorebox .sr{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.scorebox .sr:last-child{margin-bottom:0}
+.scorebox .sl{font-size:11px;width:84px;flex:none;color:var(--muted)}
+.bar{flex:1;height:6px;border-radius:3px;background:var(--line);overflow:hidden;min-width:0}
+.bar>i{display:block;height:100%;border-radius:3px}
+.sv{font-family:var(--mono);font-size:11px;width:14px;text-align:right}
+.wrp{font-size:12px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.wrp b{color:var(--ink);font-weight:500}
+.holds{display:flex;flex-direction:column;gap:5px;margin-top:5px}
+.hrow{display:grid;grid-template-columns:72px 1fr 36px 16px;gap:8px;align-items:center;font-size:12px}
+.hx{background:none;border:0;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:0;width:16px;text-align:center}
+.hx:hover{color:var(--crit)}
+.addwrap{margin-top:9px}
+.hsearch{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-family:var(--body);font-size:12px;color:var(--ink);outline:none}
+.hsearch:focus{border-color:var(--accent)}
+.hres{display:flex;flex-direction:column;gap:3px;margin-top:5px;max-height:188px;overflow-y:auto}
+.hadd{display:grid;grid-template-columns:52px 1fr auto auto;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer;text-align:left;color:var(--ink)}
+.hadd:hover{border-color:var(--accent);background:var(--accent-soft)}
+.hadd .at{font-family:var(--mono);font-size:11px;color:var(--accent)}
+.hadd .an{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hadd .ay{font-family:var(--mono);font-size:10px;font-variant-numeric:tabular-nums}
+.hadd .acl{font-family:var(--mono);font-size:9px;letter-spacing:.05em;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.htkr{font-family:var(--mono);font-size:11px;color:var(--accent);display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.htkr em{font-style:normal;font-family:var(--body);font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wsl{width:100%;accent-color:var(--accent);height:4px;min-width:0;cursor:pointer}
+.wreset{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;cursor:pointer;vertical-align:middle}
+.wreset:hover{color:var(--ink);border-color:var(--accent)}
+.hname{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.hbar>i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.hw{font-family:var(--mono);font-size:11px;text-align:right;font-variant-numeric:tabular-nums}
+.hnote{font-size:10.5px;color:var(--muted);margin-top:7px;font-style:italic}
+.rets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+.rcell{background:var(--surface-2);border-radius:8px;padding:9px 6px;text-align:center}
+.rl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.rv{font-family:var(--mono);font-weight:600;font-size:15px;margin-top:2px;font-variant-numeric:tabular-nums}
+.rc{font-size:9px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+footer{border-top:1px solid var(--line);padding-block:22px 40px;color:var(--muted);font-size:12.5px}
+footer h3{font-family:var(--body);font-size:13px;color:var(--ink);margin-bottom:8px}
+footer .feeds{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:10px 0 16px}
+footer .feed{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+footer .feed b{color:var(--ink);font-size:12.5px}
+footer a{color:var(--accent)}
+.empty{padding:40px;text-align:center;color:var(--muted);font-size:14px}
+.newbtn{flex:none;background:var(--accent);color:#fff;border:0;border-radius:9px;padding:8px 12px;font-family:var(--mono);font-size:12px;font-weight:600;cursor:pointer}
+.newbtn:hover{filter:brightness(1.06)}
+.builder{background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px;display:none}
+.builder.open{display:block}
+.builder h3{font-family:var(--display);font-weight:600;font-size:17px;margin-bottom:4px}
+.bsub{font-size:12px;color:var(--muted);margin-bottom:12px}
+.brow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.binput{flex:1 1 170px;min-width:0;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-family:var(--body);font-size:13px;color:var(--ink);outline:none}
+.binput:focus{border-color:var(--accent)}
+.baibtn{flex:none;background:var(--accent-soft);color:var(--ink);border:1px solid var(--accent);border-radius:8px;padding:9px 12px;font-family:var(--mono);font-size:12px;cursor:pointer;display:none}
+.baibtn:hover{filter:brightness(.97)}
+.baibtn:disabled{opacity:.6;cursor:default}
+.bsel{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.bchip{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:999px;padding:3px 5px 3px 10px;font-size:11px;color:var(--muted)}
+.bchip b{color:var(--accent);font-family:var(--mono)}
+.bchip button{background:none;border:0;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:0 3px}
+.bchip button:hover{color:var(--crit)}
+.bres{display:flex;flex-direction:column;gap:3px;max-height:220px;overflow-y:auto;margin-bottom:10px}
+.bactions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bcreate{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-family:var(--mono);font-size:12px;font-weight:600;cursor:pointer}
+.bcreate:disabled{opacity:.5;cursor:default}
+.bcancel{background:var(--surface-2);color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:9px 14px;font-family:var(--mono);font-size:12px;cursor:pointer}
+.bmsg{font-size:11.5px;color:var(--muted)}
+.delbasket{margin-top:10px;background:none;border:0;color:var(--crit);font-size:11px;cursor:pointer;text-decoration:underline;padding:0}
+.stage.custom{background:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap head-inner">
+    <div class="title-row">
+      <h1>Index Pipeline
+        <span class="sub">Candidate indices &amp; ETFs for Defiance × exchange launches — scored, ranked, tracked</span>
+      </h1>
+      <button class="theme-btn" id="themeBtn" aria-label="Toggle theme">◐ Theme</button>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="controls">
+      <label class="search">🔎<input id="q" placeholder="Search themes, tickers, constituents…" autocomplete="off"></label>
+      <div class="seg" id="stageFilter" role="group" aria-label="Stage"></div>
+      <div class="seg" id="catFilter" role="group" aria-label="Category"></div>
+      <select id="sort" aria-label="Sort by">
+        <option value="composite">Sort: Composite score</option>
+        <option value="momentum">Sort: Momentum</option>
+        <option value="revenue">Sort: Revenue potential</option>
+        <option value="name">Sort: A–Z</option>
+      </select>
+      <button class="newbtn" id="newBasketBtn">+ New basket</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap main">
+  <aside class="rail">
+    <h2>Scoring weights</h2>
+    <p class="hint">Tune what matters. Cards re-rank live. Composite is the weighted blend of the six 1–5 sub-scores.</p>
+    <div id="weights"></div>
+    <button class="reset" id="resetW">Reset to defaults</button>
+  </aside>
+  <div style="min-width:0;display:flex;flex-direction:column">
+    <div class="builder" id="builder"></div>
+    <main class="cards" id="cards"></main>
+  </div>
+</div>
+
+<footer class="wrap">
+  <h3>How the scan works</h3>
+  <p>Each candidate is surfaced by a source feed, captured as a record, and scored on six dimensions. Ideas move <b>Watch → Validate → Pitch</b> as feasibility and conviction firm up. The scan re-runs weekly; agents each work the source they're best at and drop candidates into the pipeline for review.</p>
+  <div class="feeds">
+    <div class="feed"><b>Claude</b><br>ETF/index filings, competitor launches, prediction-market categories, your meeting notes, scoring &amp; synthesis</div>
+    <div class="feed"><b>Grok</b> · <span style="color:var(--muted)">queued</span><br>X narratives, tickers &amp; themes spiking in real time</div>
+    <div class="feed"><b>Muse</b> · <span style="color:var(--muted)">queued</span><br>Meta platforms — retail &amp; consumer themes emerging</div>
+    <div class="feed"><b>Instinct</b> · <span style="color:var(--muted)">offline</span><br>Capabilities TBC — slot reserved</div>
+  </div>
+  <p id="scanline"></p>
+  <p style="margin-top:10px">First scan sources: <a href="https://blog.syzgroup.com/syz-the-moment/ai-infrastructure-defense-space-and-nuclear-are-now-the-top-5-etf-themes-of-2026" target="_blank" rel="noopener">SYZ — top 2026 ETF themes</a> · <a href="https://www.coingecko.com/learn/crypto-narratives" target="_blank" rel="noopener">CoinGecko — crypto narratives</a> · <a href="https://blockonomi.com/prediction-market-statistics-2026-kalshi-polymarket-and-the-numbers-behind-the-boom" target="_blank" rel="noopener">Blockonomi — prediction-market stats</a> · <a href="https://news.kalshi.com/p/s-p-dow-jones-indices-and-kalshi-are-joining-forces-to-build-the-next-generation-of-financial-market" target="_blank" rel="noopener">S&amp;P DJI × Kalshi</a>. Your six crypto baskets (DeFi 10, Cashflow 10, Infra, DePIN, Crypto AI, Privacy) are seeded from your Defiance basket sheet.</p>
+  <p style="margin-top:8px;font-size:11.5px">Scores and revenue tags are first-pass judgments for triage, not investment or legal advice. Investability and feasibility still need per-idea diligence.</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ibm-plex/1.1.4/css/ibm-plex.min.css" onerror="this.remove()"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script>
+const DIMS=[["momentum","Momentum"],["investability","Investability"],["differentiation","Differentiation"],["feasibility","Feasibility"],["revenue","Revenue"],["fit","Partner fit"]];
+const DEFW={momentum:20,investability:20,differentiation:15,feasibility:15,revenue:20,fit:10};
+const IDEAS=[{"name":"Stablecoin & Tokenized-Dollar Rails","tkr":"USDX","cat":"Equity thematic","stage":"pitch","wrap":"Spot ETF + perp index","exch":"All four","s":{"momentum":5,"investability":5,"differentiation":4,"feasibility":5,"revenue":5,"fit":5},"thesis":"Stablecoin regulatory clarity makes tokenized-dollar infrastructure the single biggest crypto-to-TradFi bridge — the pick-and-shovel layer under the whole settlement stack.","method":"Listed issuers & rails: Circle (CRCL), Coinbase (COIN), card/payment networks with stablecoin exposure, exchange operators; weighted by stablecoin-linked revenue, liquidity-screened.","cat_":"Regulatory clarity (GENIUS-era), stablecoin supply at record highs, every major fintech shipping dollar rails.","diff":"No clean pure-play stablecoin-infrastructure basket exists yet — mostly buried inside broad fintech ETFs.","wmethod":"Thematic weight, stablecoin-purity tilt, 20% cap","holds":[{"t":"CRCL","n":"Circle","w":18,"r":{"m1":-16.03,"m3":1.24,"m6":-40.28,"y1":-39.95}},{"t":"COIN","n":"Coinbase","w":16,"r":{"m1":-21.65,"m3":-9.36,"m6":-33.01,"y1":-57.8}},{"t":"PYPL","n":"PayPal","w":11,"r":{"m1":7.67,"m3":0.29,"m6":30.57,"y1":-12.96}},{"t":"V","n":"Visa","w":11,"r":{"m1":12.68,"m3":16.97,"m6":32.58,"y1":24.29}},{"t":"MA","n":"Mastercard","w":10,"r":{"m1":13.56,"m3":15.9,"m6":31.73,"y1":17.96}},{"t":"XYZ","n":"Block","w":9,"r":{"m1":13.62,"m3":8.23,"m6":14.2,"y1":16.06}},{"t":"HOOD","n":"Robinhood","w":8,"r":{"m1":-24.39,"m3":-14.4,"m6":5.04,"y1":-43.21}},{"t":"SOFI","n":"SoFi","w":6,"r":{"m1":3.84,"m3":-10.54,"m6":2.92,"y1":-46.09}},{"t":"FI","n":"Fiserv","w":6,"r":null},{"t":"GPN","n":"Global Payments","w":5,"r":{"m1":17.68,"m3":13.08,"m6":40.77,"y1":22.98}}],"rets":{"m1":{"v":1.4,"c":94},"m3":{"v":9.5,"c":94},"m6":{"v":6.2,"c":94},"y1":{"v":-14,"c":94}},"flag":"","src":"ETF filings & web"},{"name":"AI Compute & Neocloud Infrastructure","tkr":"AICMP","cat":"Equity thematic","stage":"pitch","wrap":"Spot ETF + perp","exch":"All four","s":{"momentum":5,"investability":4,"differentiation":4,"feasibility":5,"revenue":5,"fit":5},"thesis":"The AI capex supercycle is a picks-and-shovels trade: GPU clouds, the power to run them, and the networking/memory that feeds them.","method":"GPU/neocloud operators, data-center REITs, grid & power suppliers to compute, HBM/networking semis; cap-weighted with a power-exposure tilt.","cat_":"AI remains the #1 thematic category of 2026; the bottleneck has shifted from chips to power and buildout.","diff":"Broad AI ETFs exist, but a neocloud + power-gap pure-play is open whitespace — and squarely in your wheelhouse.","wmethod":"Capped market-cap, compute + power tilt, 22% cap","holds":[{"t":"NVDA","n":"Nvidia","w":22,"r":{"m1":-19.02,"m3":-14.21,"m6":-13.27,"y1":-4.39}},{"t":"AVGO","n":"Broadcom","w":12,"r":{"m1":-18.45,"m3":-30.47,"m6":-31.7,"y1":-18.19}},{"t":"AMD","n":"AMD","w":10,"r":{"m1":-27.65,"m3":-4.37,"m6":-1.35,"y1":75.18}},{"t":"CRWV","n":"CoreWeave","w":10,"r":{"m1":-43.12,"m3":-47.39,"m6":-59.35,"y1":-59.45}},{"t":"NBIS","n":"Nebius","w":8,"r":{"m1":-41.06,"m3":-29.67,"m6":-26.86,"y1":10.68}},{"t":"VRT","n":"Vertiv","w":7,"r":{"m1":-24.97,"m3":-32.3,"m6":-46.21,"y1":-4.12}},{"t":"APLD","n":"Applied Digital","w":7,"r":{"m1":-34.8,"m3":-46.49,"m6":-62.3,"y1":-53.01}},{"t":"ANET","n":"Arista","w":6,"r":{"m1":-19.04,"m3":-10.82,"m6":20.48,"y1":21.64}},{"t":"SMCI","n":"Super Micro","w":6,"r":{"m1":-32.76,"m3":-8.58,"m6":-18.69,"y1":-31.57}},{"t":"MU","n":"Micron","w":6,"r":{"m1":-33.39,"m3":-19.86,"m6":-7.61,"y1":190.53}},{"t":"DELL","n":"Dell","w":6,"r":{"m1":-42.82,"m3":-28.25,"m6":26.13,"y1":115.56}}],"rets":{"m1":{"v":-26.1,"c":100},"m3":{"v":-17.6,"c":100},"m6":{"v":-13.2,"c":100},"y1":{"v":24.1,"c":100}},"flag":"","src":"ETF filings & web"},{"name":"Prediction-Market & Event Economy","tkr":"EVNT","cat":"Hybrid / event-linked","stage":"pitch","wrap":"Spot ETF + event-index perp","exch":"All four","s":{"momentum":5,"investability":3,"differentiation":5,"feasibility":4,"revenue":4,"fit":5},"thesis":"Event contracts are the fastest-growing new asset class, and S&P DJI × Kalshi just legitimized turning event categories into indices. First mover owns the wrapper.","method":"Two sleeves: (1) listed equities exposed to the prediction economy — ICE, DraftKings, Robinhood, Coinbase; (2) a Kalshi/Polymarket category basket as the reference for an event-index perp.","cat_":"S&P DJI–Kalshi partnership to build indices from event contracts; Kalshi + Polymarket posted a record ~$8–10B combined volume in Nov 2026, and Kalshi now lists US Tech 100 / US 500 perps at 11.6x leverage in the US — a concrete event/equity-index perp precedent.","diff":"Essentially no regulated wrapper exists on the event economy — the clearest novel-product opening on the board.","wmethod":"Thematic weight, event-economy exposure, 20% cap","holds":[{"t":"ICE","n":"Intercontinental Exch.","w":20,"r":{"m1":10.89,"m3":14.43,"m6":10.56,"y1":17.82}},{"t":"HOOD","n":"Robinhood","w":16,"r":{"m1":-24.39,"m3":-14.4,"m6":5.04,"y1":-43.21}},{"t":"DKNG","n":"DraftKings","w":14,"r":{"m1":-6.84,"m3":-23.73,"m6":-27.47,"y1":-33.7}},{"t":"COIN","n":"Coinbase","w":14,"r":{"m1":-21.65,"m3":-9.36,"m6":-33.01,"y1":-57.8}},{"t":"CME","n":"CME Group","w":12,"r":{"m1":10.65,"m3":16.02,"m6":8.76,"y1":14.14}},{"t":"FLUT","n":"Flutter","w":8,"r":{"m1":0.15,"m3":-13.33,"m6":-19.26,"y1":-62.21}},{"t":"NDAQ","n":"Nasdaq","w":8,"r":{"m1":15.97,"m3":12.03,"m6":20.48,"y1":25.2}},{"t":"CBOE","n":"Cboe","w":8,"r":{"m1":20.13,"m3":23.95,"m6":1.35,"y1":40.52}}],"rets":{"m1":{"v":4.8,"c":100},"m3":{"v":7.8,"c":100},"m6":{"v":2,"c":100},"y1":{"v":-10,"c":100}},"flag":"Event-contract index methodology and licensing is untested ground — the differentiator is also the feasibility risk.","src":"Kalshi signal / prediction markets"},{"name":"Digital-Asset Treasury Companies","tkr":"TRSY","cat":"Equity thematic","stage":"validate","wrap":"Spot + leveraged + perp","exch":"All four","s":{"momentum":4,"investability":4,"differentiation":4,"feasibility":4,"revenue":4,"fit":5},"thesis":"The proliferation of BTC/ETH/SOL corporate-treasury companies is a high-beta crypto proxy that trades on equity rails — a diversified basket smooths single-name blowups.","method":"Basket of corporate crypto-treasury equities (MSTR and the newer BTC/ETH/SOL treasuries); liquidity-weighted, concentration-capped, optional leverage sleeve.","cat_":"Treasury-company model spreading across assets and geographies; high retail attention and volatility.","diff":"Defiance already runs leveraged single-stock (e.g. MSTX) — a diversified DAT index is an adjacency, not a duplicate.","wmethod":"Market-cap weighted, MSTR capped at 30%","holds":[{"t":"MSTR","n":"Strategy","w":30,"r":{"m1":-14.88,"m3":32.47,"m6":-31.27,"y1":-49.44}},{"t":"MARA","n":"Mara Holdings","w":12,"r":{"m1":-35.92,"m3":-33.58,"m6":-50.93,"y1":-62.93}},{"t":"RIOT","n":"Riot Platforms","w":10,"r":{"m1":-0.77,"m3":-13.87,"m6":-30.61,"y1":-11.91}},{"t":"COIN","n":"Coinbase","w":10,"r":{"m1":-21.65,"m3":-9.36,"m6":-33.01,"y1":-57.8}},{"t":"BMNR","n":"Bitmine","w":8,"r":{"m1":-21.96,"m3":3.65,"m6":-15.38,"y1":-54.71}},{"t":"SBET","n":"SharpLink","w":6,"r":{"m1":-29.17,"m3":0.97,"m6":-16.13,"y1":-48.56}},{"t":"HUT","n":"Hut 8","w":6,"r":{"m1":-33.85,"m3":-38.54,"m6":-46.53,"y1":12.02}},{"t":"CIFR","n":"Cipher Mining","w":6,"r":{"m1":-51.48,"m3":-59.89,"m6":-68.13,"y1":-73.49}},{"t":"CORZ","n":"Core Scientific","w":6,"r":{"m1":-23.44,"m3":-39.51,"m6":-48.69,"y1":-46.06}},{"t":"CLSK","n":"CleanSpark","w":6,"r":{"m1":-42.05,"m3":-46.85,"m6":-56.62,"y1":-62.85}}],"rets":{"m1":{"v":-25.5,"c":100},"m3":{"v":-1.9,"c":100},"m6":{"v":-33.1,"c":100},"y1":{"v":-44,"c":100}},"flag":"High blowup risk — leveraged crypto-treasury products have drawn down ~90%+ in stress. Size and cap carefully.","src":"ETF filings & web"},{"name":"Tokenized RWA Infrastructure","tkr":"RWAX","cat":"Hybrid","stage":"validate","wrap":"Spot ETF + perp","exch":"All four","s":{"momentum":5,"investability":3,"differentiation":4,"feasibility":3,"revenue":4,"fit":5},"thesis":"Real-world-asset tokenization is the convergence trade where crypto and TradFi actually merge — own the infrastructure, not any single asset.","method":"Hybrid basket: tokenization-infra tokens (Ondo-type) plus listed firms building RWA rails; dual token+equity construction with liquidity screens.","cat_":"RWA is a consensus mega-narrative for 2026; tokenized treasuries and funds scaling fast.","diff":"Thematic RWA baskets are thin; a credible token+equity hybrid is differentiated but harder to construct.","wmethod":"Equity sleeve — RWA is primarily token-led","holds":[{"t":"BLK","n":"BlackRock","w":20,"r":{"m1":10.66,"m3":4.2,"m6":8.67,"y1":9.81}},{"t":"COIN","n":"Coinbase","w":16,"r":{"m1":-21.65,"m3":-9.36,"m6":-33.01,"y1":-57.8}},{"t":"ICE","n":"Intercontinental Exch.","w":14,"r":{"m1":10.89,"m3":14.43,"m6":10.56,"y1":17.82}},{"t":"HOOD","n":"Robinhood","w":12,"r":{"m1":-24.39,"m3":-14.4,"m6":5.04,"y1":-43.21}},{"t":"SOFI","n":"SoFi","w":10,"r":{"m1":3.84,"m3":-10.54,"m6":2.92,"y1":-46.09}},{"t":"JPM","n":"JPMorgan","w":10,"r":{"m1":0.93,"m3":-7.03,"m6":10.72,"y1":7.32}},{"t":"APO","n":"Apollo","w":10,"r":{"m1":1.26,"m3":-11.57,"m6":-12.35,"y1":-12.71}},{"t":"GS","n":"Goldman Sachs","w":8,"r":{"m1":-1.9,"m3":-16.31,"m6":-7.55,"y1":9.17}}],"rets":{"m1":{"v":1.6,"c":100},"m3":{"v":2.5,"c":100},"m6":{"v":3.5,"c":100},"y1":{"v":-9.9,"c":100}},"flag":"Mixed token/equity construction raises wrapper and custody complexity — feasibility needs structuring work.","src":"Crypto narratives"},{"name":"Next-Gen Nuclear & Power","tkr":"ATOM","cat":"Equity thematic","stage":"validate","wrap":"Spot ETF + perp","exch":"All four","s":{"momentum":5,"investability":4,"differentiation":3,"feasibility":5,"revenue":4,"fit":3},"thesis":"AI's power demand has made nuclear and grid buildout a core theme — SMRs, uranium, and the equipment to connect it all.","method":"SMR developers, uranium miners & enrichment, grid/power-equipment makers; cap-weighted across the fuel-to-grid chain.","cat_":"Nuclear sits in the top-5 ETF themes of 2026, pulled by data-center power demand.","diff":"Several uranium/nuclear ETFs already exist — differentiation comes from the SMR + grid tilt, not the base theme.","wmethod":"Capped market-cap, fuel-to-grid spread","holds":[{"t":"CEG","n":"Constellation","w":14,"r":{"m1":-12.32,"m3":-7.57,"m6":-17.68,"y1":-31.19}},{"t":"GEV","n":"GE Vernova","w":12,"r":{"m1":-22.54,"m3":-21.87,"m6":-25.58,"y1":38.31}},{"t":"VST","n":"Vistra","w":12,"r":{"m1":-20.07,"m3":-12.65,"m6":-15.52,"y1":-34.1}},{"t":"CCJ","n":"Cameco","w":12,"r":{"m1":-18.16,"m3":-26.73,"m6":-38.93,"y1":-25.14}},{"t":"SMR","n":"NuScale","w":10,"r":{"m1":-30.6,"m3":-44.66,"m6":-59.52,"y1":-86.6}},{"t":"OKLO","n":"Oklo","w":10,"r":{"m1":-31.88,"m3":-47.07,"m6":-67.52,"y1":-80.57}},{"t":"BWXT","n":"BWX Tech","w":8,"r":{"m1":-15.96,"m3":-29.23,"m6":-41.79,"y1":-39.67}},{"t":"LEU","n":"Centrus","w":8,"r":{"m1":-26.38,"m3":-44.76,"m6":-49.55,"y1":-67.89}},{"t":"TLN","n":"Talen","w":8,"r":{"m1":-5.73,"m3":-1.33,"m6":-12.35,"y1":-16.07}},{"t":"NNE","n":"Nano Nuclear","w":6,"r":{"m1":-27.2,"m3":-40.17,"m6":-59.53,"y1":-74.44}}],"rets":{"m1":{"v":-26,"c":100},"m3":{"v":-25.3,"c":100},"m6":{"v":-41.4,"c":100},"y1":{"v":-37.7,"c":100}},"flag":"","src":"ETF filings & web"},{"name":"Defense, Drones & Autonomy","tkr":"DRON","cat":"Equity thematic","stage":"validate","wrap":"Spot ETF + perp","exch":"All four","s":{"momentum":4,"investability":4,"differentiation":3,"feasibility":5,"revenue":3,"fit":3},"thesis":"Defense spending is rotating toward drones, counter-UAS and autonomy — a fresher cut than the legacy primes.","method":"Defense primes tilted to drones/autonomy/space-defense plus pure-play counter-UAS names; cap-weighted with an autonomy tilt.","cat_":"Defense is a top-5 2026 theme; procurement shifting hard toward unmanned systems.","diff":"Broad defense ETFs are crowded; the drone/autonomy tilt is the differentiator.","wmethod":"Capped market-cap, drone/autonomy tilt","holds":[{"t":"PLTR","n":"Palantir","w":14,"r":{"m1":-19.32,"m3":-8.47,"m6":16.39,"y1":-14.65}},{"t":"AVAV","n":"AeroVironment","w":12,"r":{"m1":-18.05,"m3":-40.39,"m6":-33,"y1":-67.85}},{"t":"KTOS","n":"Kratos","w":12,"r":{"m1":-16.29,"m3":-43.77,"m6":-39.37,"y1":-54.66}},{"t":"RTX","n":"RTX","w":10,"r":{"m1":2.83,"m3":-15.43,"m6":7.63,"y1":8.93}},{"t":"LMT","n":"Lockheed","w":10,"r":{"m1":11.65,"m3":-5.98,"m6":11.96,"y1":19.85}},{"t":"NOC","n":"Northrop","w":8,"r":{"m1":8.37,"m3":-9.15,"m6":-4.46,"y1":-7.97}},{"t":"GD","n":"General Dynamics","w":8,"r":{"m1":7.32,"m3":-10.58,"m6":2.17,"y1":3.25}},{"t":"LHX","n":"L3Harris","w":8,"r":{"m1":9.7,"m3":-10.3,"m6":-13.27,"y1":-9.48}},{"t":"AXON","n":"Axon","w":8,"r":{"m1":-25,"m3":-47.51,"m6":-22.44,"y1":-51.06}},{"t":"RCAT","n":"Red Cat","w":5,"r":{"m1":-31.64,"m3":-59.6,"m6":-61.04,"y1":-57.02}},{"t":"ONDS","n":"Ondas","w":5,"r":{"m1":-22.04,"m3":-42.64,"m6":-41.06,"y1":-11}}],"rets":{"m1":{"v":-4.6,"c":100},"m3":{"v":-16.1,"c":100},"m6":{"v":-8.1,"c":100},"y1":{"v":-18.8,"c":100}},"flag":"","src":"ETF filings & web"},{"name":"Humanoid Robotics","tkr":"BOTS","cat":"Equity thematic","stage":"validate","wrap":"Spot ETF + perp","exch":"All four","s":{"momentum":4,"investability":3,"differentiation":4,"feasibility":4,"revenue":3,"fit":4},"thesis":"Humanoid robotics is moving from demo to supply chain — own the actuators, vision and compute rather than betting on one robot.","method":"Robotics supply chain: actuators, sensors/vision, edge compute, Optimus-exposed names, robotics ADRs; cap-weighted, liquidity-screened.","cat_":"Humanoid programs scaling across US and Asia; strong retail narrative pull.","diff":"Few robotics ETFs isolate the humanoid supply chain specifically.","wmethod":"Capped market-cap, humanoid supply-chain tilt","holds":[{"t":"TSLA","n":"Tesla","w":16,"r":{"m1":-4.47,"m3":8.26,"m6":-16.37,"y1":-22.47}},{"t":"NVDA","n":"Nvidia","w":12,"r":{"m1":-19.02,"m3":-14.21,"m6":-13.27,"y1":-4.39}},{"t":"ISRG","n":"Intuitive Surgical","w":10,"r":{"m1":9,"m3":15.1,"m6":0.61,"y1":-17.46}},{"t":"ABB","n":"ABB","w":10,"r":null},{"t":"ROK","n":"Rockwell","w":9,"r":{"m1":-13.42,"m3":-13.64,"m6":-17.19,"y1":3.66}},{"t":"TER","n":"Teradyne","w":9,"r":{"m1":-45.27,"m3":-40.23,"m6":-39.35,"y1":16.32}},{"t":"SYM","n":"Symbotic","w":9,"r":{"m1":-12.46,"m3":-8.2,"m6":-29.59,"y1":-52.84}},{"t":"PATH","n":"UiPath","w":9,"r":{"m1":-1.89,"m3":-16.61,"m6":20.48,"y1":-10.65}},{"t":"CGNX","n":"Cognex","w":8,"r":{"m1":-21.56,"m3":-25.76,"m6":-27.23,"y1":17.98}},{"t":"SERV","n":"Serve Robotics","w":8,"r":{"m1":-27.64,"m3":-34.55,"m6":-63.28,"y1":-72.43}}],"rets":{"m1":{"v":-11.1,"c":90},"m3":{"v":-5.2,"c":90},"m6":{"v":-12.9,"c":90},"y1":{"v":-8.4,"c":90}},"flag":"","src":"ETF filings & web"},{"name":"Defiance Crypto Cashflow 10","tkr":"CASH10","cat":"Crypto-native","stage":"pitch","wrap":"Perp index + spot crypto ETF","exch":"All four","s":{"momentum":5,"investability":4,"differentiation":5,"feasibility":4,"revenue":4,"fit":5},"thesis":"The strongest story on the board: tokens that actually generate fees and cashflow. 'Crypto that makes money' is the framing institutions can underwrite.","method":"Core 10: AAVE, Aerodrome (AERO), Venice (VVV), Hyperliquid (HYPE), Pump.fun (PUMP), BNB, Tron (TRX), ETH, SOL, Jupiter (JUP). Additions bench: LIT, SYRUP, RAY, EDGE, ETHFI, PONS, ZERO, GRASS.","cat_":"Fee-revenue and 'real yield' is the dominant 2026 crypto framing — it ties the basket to fundamentals institutions respect.","diff":"A cashflow-screened crypto index is genuinely differentiated; most baskets are market-cap or narrative, not revenue-based.","eqan":"COIN, HOOD, CRCL, GLXY, XYZ, CME","flag":"Needs a transparent revenue/cashflow screen as the published methodology; some names (PUMP, VVV) are high-beta. HYPE single-name ETFs are now being filed by multiple issuers — differentiate on the cashflow screen, not the HYPE exposure.","wmethod":"Trailing fee-revenue weight, 20% cap","holds":[{"t":"HYPE","n":"Hyperliquid","w":16,"r":{"m1":-11.33,"m3":39.09,"m6":95.09,"y1":81.47}},{"t":"PUMP","n":"Pump.fun","w":14,"r":{"m1":-33.38,"m3":34.48,"m6":96.49,"y1":-11.08}},{"t":"ETH","n":"Ethereum","w":13,"r":{"m1":-15.2,"m3":12.94,"m6":-5.96,"y1":-40.66}},{"t":"SOL","n":"Solana","w":12,"r":{"m1":-20.92,"m3":14.13,"m6":-4.53,"y1":-47.09}},{"t":"BNB","n":"Binance Chain","w":10,"r":{"m1":-8.44,"m3":11.37,"m6":2.23,"y1":-31.1}},{"t":"AAVE","n":"AAVE","w":9,"r":{"m1":-21.25,"m3":50.22,"m6":37.48,"y1":-37.55}},{"t":"TRX","n":"Tron","w":8,"r":{"m1":-3.95,"m3":-5.17,"m6":-9.13,"y1":9.26}},{"t":"JUP","n":"Jupiter","w":7,"r":{"m1":-32.13,"m3":38.39,"m6":9.22,"y1":-31.17}},{"t":"AERO","n":"Aerodrome","w":6,"r":{"m1":-38.6,"m3":38.87,"m6":23.02,"y1":-47.13}},{"t":"VVV","n":"Venice","w":5,"r":{"m1":-7.09,"m3":84.16,"m6":47.4,"y1":1495.18}}],"rets":{"m1":{"v":-17.3,"c":100},"m3":{"v":44.5,"c":100},"m6":{"v":37.1,"c":100},"y1":{"v":74.4,"c":100}},"src":"Defiance basket sheet (CK)"},{"name":"Defiance DeFi 10","tkr":"DEFI10","cat":"Crypto-native","stage":"pitch","wrap":"Perp index + spot crypto ETF","exch":"All four","s":{"momentum":4,"investability":4,"differentiation":4,"feasibility":4,"revenue":4,"fit":5},"thesis":"A liquid, rules-based basket of DeFi blue-chips and breakout protocols — the core 'DeFi beta' product the CEXs don't yet have in a clean wrapper.","method":"Core 10: Hyperliquid (HYPE), AAVE, Ethena (ENA), Lighter (LIT), Maple (SYRUP), Uniswap (UNI), Ondo (ONDO), Sky (SKY), Aerodrome (AERO), Jupiter (JUP). Additions bench of 14 (RAY, LIDO, LINK, PENDLE, MORPHO, ETHFI, JTO, KMNO and more).","cat_":"DeFi fee revenue and TVL re-accelerating; no standardized DeFi index perp on the major CEXs.","diff":"Productizes DeFi beta in one ticker — whitespace on the exchanges you work with.","eqan":"COIN, CRCL, HOOD, GLXY","flag":"Mix of deep (AAVE, UNI, HYPE) and thinner names (LIT, SYRUP, SKY) — needs a liquidity floor and a cap on the long tail. HYPE now has competing single-name spot-ETF filings (Bitwise, Grayscale, 21Shares, VanEck), so the basket's edge is the DeFi-beta wrapper, not HYPE exposure.","wmethod":"Capped market-cap / liquidity weight, 20% cap","holds":[{"t":"HYPE","n":"Hyperliquid","w":20,"r":{"m1":-11.33,"m3":39.09,"m6":95.09,"y1":81.47}},{"t":"AAVE","n":"AAVE","w":16,"r":{"m1":-21.25,"m3":50.22,"m6":37.48,"y1":-37.55}},{"t":"UNI","n":"Uniswap","w":14,"r":{"m1":-9.13,"m3":83.89,"m6":90.24,"y1":4.84}},{"t":"ONDO","n":"Ondo","w":12,"r":{"m1":-27.14,"m3":7.64,"m6":-6.24,"y1":-46.21}},{"t":"ENA","n":"Ethena","w":10,"r":{"m1":-29.65,"m3":72.24,"m6":32.97,"y1":-52.55}},{"t":"JUP","n":"Jupiter","w":9,"r":{"m1":-32.13,"m3":38.39,"m6":9.22,"y1":-31.17}},{"t":"AERO","n":"Aerodrome","w":7,"r":{"m1":-38.6,"m3":38.87,"m6":23.02,"y1":-47.13}},{"t":"SKY","n":"Sky","w":6,"r":{"m1":-19.25,"m3":17.28,"m6":-13.51,"y1":14.49}},{"t":"SYRUP","n":"Maple","w":3,"r":{"m1":-41.94,"m3":-8.69,"m6":-41.15,"y1":-70.89}},{"t":"LIT","n":"Lighter","w":3,"r":{"m1":-11.73,"m3":32.84,"m6":258.13,"y1":null}}],"rets":{"m1":{"v":-18.8,"c":100},"m3":{"v":53.3,"c":100},"m6":{"v":49.5,"c":100},"y1":{"v":8.2,"c":97}},"src":"Defiance basket sheet (CK)"},{"name":"Onchain Derivatives & Perp DEXs","tkr":"PERP","cat":"Crypto-native","stage":"validate","wrap":"Perp index + spot crypto ETF","exch":"All four","s":{"momentum":5,"investability":3,"differentiation":4,"feasibility":4,"revenue":4,"fit":5},"thesis":"Perpetual-futures DEXs are the breakout onchain-derivatives narrative — and the exact exchange wrapper CK is already building. A basket owns the venue layer (Hyperliquid, Lighter, Jupiter) instead of betting on one perp DEX winning.","method":"Perp-DEX and onchain-derivatives tokens: Hyperliquid (HYPE), Lighter (LIT), Jupiter (JUP), Uniswap (UNI). Bench to add once liquid and listable: dYdX (DYDX), Aevo (AEVO), GMX, Drift (DRIFT). Liquidity-floored, concentration-capped.","cat_":"Perp-DEX wars are the hottest onchain-derivatives story of 2026: Bitwise, Grayscale, 21Shares and VanEck are all racing to file single-name HYPE ETFs, and CK is in active partnership talks with Lighter (US DCO/DCM license pending) plus thematic-perp deals with Bybit and OKX.","diff":"Overlaps DeFi 10 on HYPE/UNI/LIT, but a dedicated perp-DEX / onchain-derivatives wrapper is a distinct, marketable narrative with no exchange-standard index yet.","eqan":"HOOD, COIN, CME, ICE","flag":"Heavy overlap with DeFi 10 — dedupe before launch. US regulators reportedly view Hyperliquid's validator-set model less favorably than a US-domiciled sequencer like Lighter, which may shape constituent eligibility on US-facing venues.","wmethod":"Liquidity-capped weight, 35% cap","holds":[{"t":"HYPE","n":"Hyperliquid","w":36,"r":{"m1":-11.33,"m3":39.09,"m6":95.09,"y1":81.47}},{"t":"LIT","n":"Lighter","w":26,"r":{"m1":-11.73,"m3":32.84,"m6":258.13,"y1":null}},{"t":"JUP","n":"Jupiter","w":20,"r":{"m1":-32.13,"m3":38.39,"m6":9.22,"y1":-31.17}},{"t":"UNI","n":"Uniswap","w":18,"r":{"m1":-9.13,"m3":83.89,"m6":90.24,"y1":4.84}}],"src":"Granola (Lighter/Bybit/OKX) + ETF filings"},{"name":"Defiance Crypto Infra","tkr":"INFRA","cat":"Crypto-native","stage":"pitch","wrap":"Perp index + spot crypto ETF","exch":"All four","s":{"momentum":4,"investability":5,"differentiation":3,"feasibility":5,"revenue":4,"fit":5},"thesis":"Blue-chip L1/L2 infrastructure — the most investable, liquid crypto basket and the easiest to list on every venue.","method":"Core 10: ETH, SOL, Canton (CC), BTC, Tron (TRX), BNB, Arbitrum (ARB), Avalanche (AVAX), Near (NEAR), Polygon (POLY). Additions: LINK, LIDO, PYTH, ZERO, SUI, MONAD, APT, ALGO.","cat_":"Perennial core-allocation demand; deepest liquidity of any crypto basket.","diff":"Lower differentiation — L1/L2 platform baskets are common. The Canton (CC) inclusion is the distinctive tilt.","eqan":"COIN, MARA, RIOT, CLSK, CORZ, IREN, ICE, CME","flag":"Most commoditized of the baskets — compete on fee, wrapper and distribution, not novelty.","wmethod":"Capped market-cap weight, 25% cap","holds":[{"t":"BTC","n":"Bitcoin","w":25,"r":{"m1":-9.85,"m3":17.65,"m6":-5.72,"y1":-28.54}},{"t":"ETH","n":"Ethereum","w":22,"r":{"m1":-15.2,"m3":12.94,"m6":-5.96,"y1":-40.66}},{"t":"SOL","n":"Solana","w":13,"r":{"m1":-20.92,"m3":14.13,"m6":-4.53,"y1":-47.09}},{"t":"BNB","n":"Binance Chain","w":12,"r":{"m1":-8.44,"m3":11.37,"m6":2.23,"y1":-31.1}},{"t":"TRX","n":"Tron","w":10,"r":{"m1":-3.95,"m3":-5.17,"m6":-9.13,"y1":9.26}},{"t":"AVAX","n":"Avalanche","w":5,"r":{"m1":-13.91,"m3":41.16,"m6":-8.58,"y1":-49.83}},{"t":"NEAR","n":"Near","w":4,"r":{"m1":-31.99,"m3":122.43,"m6":128.63,"y1":17.91}},{"t":"POLY","n":"Polygon","w":4,"r":{"m1":-11.19,"m3":20.83,"m6":-5.75,"y1":-49.71}},{"t":"ARB","n":"Arbitrum","w":3,"r":{"m1":-4.98,"m3":124.37,"m6":36.97,"y1":-39.88}},{"t":"CC","n":"Canton","w":2,"r":{"m1":-23.88,"m3":-10.12,"m6":-41.76,"y1":-33.39}}],"rets":{"m1":{"v":-11.4,"c":100},"m3":{"v":30.3,"c":100},"m6":{"v":6.6,"c":100},"y1":{"v":-20.9,"c":98}},"src":"Defiance basket sheet (CK)"},{"name":"Defiance Crypto AI","tkr":"AIX","cat":"Crypto-native","stage":"validate","wrap":"Perp index","exch":"All four","s":{"momentum":5,"investability":3,"differentiation":4,"feasibility":3,"revenue":3,"fit":5},"thesis":"The hottest crypto narrative in one basket — compute, agents and AI-infra tokens — with index construction taming single-token fragility.","method":"Names incl. Bittensor (TAO), Render (RENDER), Venice (VVV), NEAR, Virtuals (VIRTUALS), Akash (AKT), Livepeer (LPT), Grass (GRASS), plus emerging (BNKR, CHIP/USD.AI, PRL, B3, ORBIO, KLED).","cat_":"AI is the #1 crypto narrative with strong retail pull.","diff":"Whitespace, but constituent quality varies widely across the list.","eqan":"NVDA, CRWV, NBIS, APLD, IREN, SMCI, PLTR","flag":"Liquidity and longevity range from deep (TAO, RENDER) to thin and unproven — strict liquidity floor and frequent rebalance required.","wmethod":"Capped market-cap weight, liquidity-floored, 20% cap","holds":[{"t":"TAO","n":"Bittensor","w":20,"r":{"m1":-21.27,"m3":11.32,"m6":-23.9,"y1":-41.19}},{"t":"RENDER","n":"Render","w":16,"r":{"m1":-17.48,"m3":26.11,"m6":-14.88,"y1":-33.79}},{"t":"NEAR","n":"Near","w":14,"r":{"m1":-31.99,"m3":122.43,"m6":128.63,"y1":17.91}},{"t":"AKT","n":"Akash","w":8,"r":{"m1":-16.6,"m3":18.93,"m6":-28.85,"y1":-5.3}},{"t":"VIRTUALS","n":"Virtuals","w":8,"r":{"m1":-25.93,"m3":1.91,"m6":-29.63,"y1":-62.59}},{"t":"LPT","n":"Livepeer","w":7,"r":{"m1":-25.02,"m3":10.19,"m6":-38.94,"y1":-74.95}},{"t":"GRASS","n":"Grass","w":6,"r":{"m1":-26.58,"m3":62.83,"m6":49.93,"y1":31.65}},{"t":"VVV","n":"Venice","w":5,"r":{"m1":-7.09,"m3":84.16,"m6":47.4,"y1":1495.18}},{"t":"CHIP","n":"USD.AI","w":4,"r":{"m1":-49.54,"m3":53.68,"m6":-41.68,"y1":null}},{"t":"BNKR","n":"Bankr","w":3,"r":{"m1":-27.93,"m3":-15.64,"m6":-15.77,"y1":-31.85}},{"t":"PRL","n":"Pearl","w":3,"r":null},{"t":"B3","n":"b3","w":2,"r":{"m1":-25.2,"m3":22.85,"m6":-54.4,"y1":-74.37}},{"t":"ORBIO","n":"Orbio","w":2,"r":{"m1":-40.54,"m3":null,"m6":null,"y1":null}},{"t":"KLED","n":"Kled AI","w":2,"r":{"m1":-20.47,"m3":-7.72,"m6":-28.29,"y1":-71.34}}],"rets":{"m1":{"v":-22.3,"c":97},"m3":{"v":48.7,"c":95},"m6":{"v":9,"c":95},"y1":{"v":77.2,"c":91}},"src":"Defiance basket sheet (CK)"},{"name":"Defiance DePIN","tkr":"DPIN","cat":"Crypto-native","stage":"validate","wrap":"Perp index","exch":"All four","s":{"momentum":4,"investability":3,"differentiation":4,"feasibility":3,"revenue":3,"fit":5},"thesis":"Decentralized physical infrastructure — compute, wireless, storage — one of the few crypto themes with real-world revenue.","method":"Seed names: Geodnet (GEOD), Helium (HNT), Render (RENDER). List is early — needs expansion into storage/energy DePIN and a liquidity screen before it is indexable.","cat_":"DePIN consistently ranks among the top crypto narratives, with real usage metrics.","diff":"No exchange-standard DePIN index yet — but the current three-name list is too thin to launch.","eqan":"EQIX, DLR, APLD, IREN, TRMB","flag":"Only three constituents so far — needs more names and liquidity depth before it leaves Validate.","wmethod":"Capped market-cap weight (interim, 3 names)","holds":[{"t":"RENDER","n":"Render","w":42,"r":{"m1":-17.48,"m3":26.11,"m6":-14.88,"y1":-33.79}},{"t":"HNT","n":"Helium","w":38,"r":{"m1":-44.79,"m3":50.76,"m6":-69.4,"y1":-88.67}},{"t":"GEOD","n":"Geodnet","w":20,"r":{"m1":-19.94,"m3":15.51,"m6":84.64,"y1":76.48}}],"rets":{"m1":{"v":-28,"c":100},"m3":{"v":40.6,"c":100},"m6":{"v":-16.9,"c":100},"y1":{"v":-23.3,"c":100}},"src":"Defiance basket sheet (CK)"},{"name":"Defiance Privacy","tkr":"PRIV","cat":"Crypto-native","stage":"watch","wrap":"Perp index","exch":"Venue-dependent","s":{"momentum":3,"investability":3,"differentiation":4,"feasibility":2,"revenue":2,"fit":4},"thesis":"Privacy is a durable crypto theme, but the wrapper question is existential: the constituents are delisted or restricted on the very exchanges you would launch on.","method":"Seed names: Zama (ZAMA), Zcash (ZEC), Monero (XMR). Needs a construction that works around listing constraints.","cat_":"Renewed privacy demand, but compliance pressure runs the other way.","diff":"Differentiated theme, but feasibility is the binding constraint, not novelty.","eqan":"CRWD, PANW, ZS, NET (security/privacy cousin, not 1:1)","flag":"Monero and Zcash are delisted or restricted on major CEXs for compliance reasons — a perp referencing them may not be listable on your partner venues. Park on Watch until there is a compliant construction.","wmethod":"Capped market-cap weight (subject to listing constraints)","holds":[{"t":"XMR","n":"Monero","w":50,"r":{"m1":15.46,"m3":59.1,"m6":51.28,"y1":43.78}},{"t":"ZEC","n":"Zcash","w":35,"r":{"m1":-0.29,"m3":153.01,"m6":131.93,"y1":97.95}},{"t":"ZAMA","n":"Zama","w":15,"r":{"m1":-10.96,"m3":48.86,"m6":162.31,"y1":null}}],"rets":{"m1":{"v":2.5,"c":100},"m3":{"v":93.6,"c":100},"m6":{"v":88.7,"c":100},"y1":{"v":119.6,"c":85}},"src":"Defiance basket sheet (CK)"},{"name":"Leveraged Quantum (QTUM 2.0)","tkr":"QBTX","cat":"Equity thematic","stage":"watch","wrap":"Spot leveraged + perp","exch":"Adjacency","s":{"momentum":3,"investability":3,"differentiation":2,"feasibility":4,"revenue":3,"fit":3},"thesis":"A leveraged or next-gen cut of the quantum theme extends Defiance's existing QTUM franchise rather than starting cold.","method":"Leveraged exposure to a quantum-computing basket adjacent to the existing QTUM index.","cat_":"Quantum remains a live thematic with Defiance already the category leader via QTUM.","diff":"Overlaps the existing QTUM product — dedupe flag: adjacency, not new whitespace.","flag":"Cannibalization risk against existing QTUM — only pursue if the leveraged/variant angle is genuinely distinct.","src":"Internal / lineup adjacency"}];
+
+const POOL=[{"t":"AAVE","n":"AAVE","r":{"m1":-21.25,"m3":50.22,"m6":37.48,"y1":-37.55},"cls":"crypto"},{"t":"AERO","n":"Aerodrome","r":{"m1":-38.6,"m3":38.87,"m6":23.02,"y1":-47.13},"cls":"crypto"},{"t":"AKT","n":"Akash","r":{"m1":-16.6,"m3":18.93,"m6":-28.85,"y1":-5.3},"cls":"crypto"},{"t":"ALGO","n":"Algorand","r":{"m1":-20.41,"m3":15.98,"m6":-20.46,"y1":-47.23},"cls":"crypto"},{"t":"APT","n":"Aptos","r":{"m1":-31.74,"m3":2.41,"m6":-43.26,"y1":-81.66},"cls":"crypto"},{"t":"ARB","n":"Arbitrum","r":{"m1":-4.98,"m3":124.37,"m6":36.97,"y1":-39.88},"cls":"crypto"},{"t":"AVAX","n":"Avalanche","r":{"m1":-13.91,"m3":41.16,"m6":-8.58,"y1":-49.83},"cls":"crypto"},{"t":"B3","n":"b3","r":{"m1":-25.2,"m3":22.85,"m6":-54.4,"y1":-74.37},"cls":"crypto"},{"t":"BNB","n":"Binance Chain","r":{"m1":-8.44,"m3":11.37,"m6":2.23,"y1":-31.1},"cls":"crypto"},{"t":"BNKR","n":"Bankr","r":{"m1":-27.93,"m3":-15.64,"m6":-15.77,"y1":-31.85},"cls":"crypto"},{"t":"BTC","n":"Bitcoin","r":{"m1":-9.85,"m3":17.65,"m6":-5.72,"y1":-28.54},"cls":"crypto"},{"t":"CC","n":"Canton","r":{"m1":-23.88,"m3":-10.12,"m6":-41.76,"y1":-33.39},"cls":"crypto"},{"t":"CHIP","n":"USD.AI","r":{"m1":-49.54,"m3":53.68,"m6":-41.68,"y1":null},"cls":"crypto"},{"t":"ENA","n":"Ethena","r":{"m1":-29.65,"m3":72.24,"m6":32.97,"y1":-52.55},"cls":"crypto"},{"t":"ETH","n":"Ethereum","r":{"m1":-15.2,"m3":12.94,"m6":-5.96,"y1":-40.66},"cls":"crypto"},{"t":"ETHFI","n":"Ether.fi","r":{"m1":-8.91,"m3":64.14,"m6":37.9,"y1":-36.95},"cls":"crypto"},{"t":"GEOD","n":"Geodnet","r":{"m1":-19.94,"m3":15.51,"m6":84.64,"y1":76.48},"cls":"crypto"},{"t":"GRASS","n":"Grass","r":{"m1":-26.58,"m3":62.83,"m6":49.93,"y1":31.65},"cls":"crypto"},{"t":"HNT","n":"Helium","r":{"m1":-44.79,"m3":50.76,"m6":-69.4,"y1":-88.67},"cls":"crypto"},{"t":"HYPE","n":"Hyperliquid","r":{"m1":-11.33,"m3":39.09,"m6":95.09,"y1":81.47},"cls":"crypto"},{"t":"JTO","n":"Jito","r":{"m1":-38.8,"m3":-40.03,"m6":-32.89,"y1":-56.95},"cls":"crypto"},{"t":"JUP","n":"Jupiter","r":{"m1":-32.13,"m3":38.39,"m6":9.22,"y1":-31.17},"cls":"crypto"},{"t":"KLED","n":"Kled AI","r":{"m1":-20.47,"m3":-7.72,"m6":-28.29,"y1":-71.34},"cls":"crypto"},{"t":"KMNO","n":"Kamino","r":{"m1":-6.35,"m3":84.98,"m6":45.63,"y1":-45.93},"cls":"crypto"},{"t":"LIDO","n":"Lido","r":{"m1":-23.81,"m3":11.97,"m6":-15.28,"y1":-60.85},"cls":"crypto"},{"t":"LINK","n":"Chainlink","r":{"m1":-17.68,"m3":22.03,"m6":4.79,"y1":-32.79},"cls":"crypto"},{"t":"LIT","n":"Lighter","r":{"m1":-11.73,"m3":32.84,"m6":258.13,"y1":null},"cls":"crypto"},{"t":"LPT","n":"Livepeer","r":{"m1":-25.02,"m3":10.19,"m6":-38.94,"y1":-74.95},"cls":"crypto"},{"t":"MORPHO","n":"Morpho","r":{"m1":-14.62,"m3":6.07,"m6":5.12,"y1":5.21},"cls":"crypto"},{"t":"NEAR","n":"Near","r":{"m1":-31.99,"m3":122.43,"m6":128.63,"y1":17.91},"cls":"crypto"},{"t":"ONDO","n":"Ondo","r":{"m1":-27.14,"m3":7.64,"m6":-6.24,"y1":-46.21},"cls":"crypto"},{"t":"ORBIO","n":"Orbio","r":{"m1":-40.54,"m3":null,"m6":null,"y1":null},"cls":"crypto"},{"t":"PENDLE","n":"Pendle","r":{"m1":-26.76,"m3":19.74,"m6":-17.41,"y1":-42.46},"cls":"crypto"},{"t":"POLY","n":"Polygon","r":{"m1":-11.19,"m3":20.83,"m6":-5.75,"y1":-49.71},"cls":"crypto"},{"t":"PUMP","n":"Pump.fun","r":{"m1":-33.38,"m3":34.48,"m6":96.49,"y1":-11.08},"cls":"crypto"},{"t":"PYTH","n":"Pyth Network","r":{"m1":-19.32,"m3":51.55,"m6":23.62,"y1":-39.8},"cls":"crypto"},{"t":"RAY","n":"Raydium","r":{"m1":-24.93,"m3":180.77,"m6":128.48,"y1":18.65},"cls":"crypto"},{"t":"RENDER","n":"Render","r":{"m1":-17.48,"m3":26.11,"m6":-14.88,"y1":-33.79},"cls":"crypto"},{"t":"SKY","n":"Sky","r":{"m1":-19.25,"m3":17.28,"m6":-13.51,"y1":14.49},"cls":"crypto"},{"t":"SOL","n":"Solana","r":{"m1":-20.92,"m3":14.13,"m6":-4.53,"y1":-47.09},"cls":"crypto"},{"t":"SUI","n":"Sui","r":{"m1":-22.94,"m3":23.78,"m6":-29.03,"y1":-59.98},"cls":"crypto"},{"t":"SYRUP","n":"Maple","r":{"m1":-41.94,"m3":-8.69,"m6":-41.15,"y1":-70.89},"cls":"crypto"},{"t":"TAO","n":"Bittensor","r":{"m1":-21.27,"m3":11.32,"m6":-23.9,"y1":-41.19},"cls":"crypto"},{"t":"TRX","n":"Tron","r":{"m1":-3.95,"m3":-5.17,"m6":-9.13,"y1":9.26},"cls":"crypto"},{"t":"UNI","n":"Uniswap","r":{"m1":-9.13,"m3":83.89,"m6":90.24,"y1":4.84},"cls":"crypto"},{"t":"VIRTUALS","n":"Virtuals","r":{"m1":-25.93,"m3":1.91,"m6":-29.63,"y1":-62.59},"cls":"crypto"},{"t":"VVV","n":"Venice","r":{"m1":-7.09,"m3":84.16,"m6":47.4,"y1":1495.18},"cls":"crypto"},{"t":"XMR","n":"Monero","r":{"m1":15.46,"m3":59.1,"m6":51.28,"y1":43.78},"cls":"crypto"},{"t":"ZAMA","n":"Zama","r":{"m1":-10.96,"m3":48.86,"m6":162.31,"y1":null},"cls":"crypto"},{"t":"ZEC","n":"Zcash","r":{"m1":-0.29,"m3":153.01,"m6":131.93,"y1":97.95},"cls":"crypto"},{"t":"AMD","n":"AMD","r":{"m1":-27.65,"m3":-4.37,"m6":-1.35,"y1":75.18},"cls":"equity"},{"t":"ANET","n":"Arista","r":{"m1":-19.04,"m3":-10.82,"m6":20.48,"y1":21.64},"cls":"equity"},{"t":"APLD","n":"Applied Digital","r":{"m1":-34.8,"m3":-46.49,"m6":-62.3,"y1":-53.01},"cls":"equity"},{"t":"APO","n":"Apollo","r":{"m1":1.26,"m3":-11.57,"m6":-12.35,"y1":-12.71},"cls":"equity"},{"t":"AVAV","n":"AeroVironment","r":{"m1":-18.05,"m3":-40.39,"m6":-33,"y1":-67.85},"cls":"equity"},{"t":"AVGO","n":"Broadcom","r":{"m1":-18.45,"m3":-30.47,"m6":-31.7,"y1":-18.19},"cls":"equity"},{"t":"AXON","n":"Axon","r":{"m1":-25,"m3":-47.51,"m6":-22.44,"y1":-51.06},"cls":"equity"},{"t":"BLK","n":"BlackRock","r":{"m1":10.66,"m3":4.2,"m6":8.67,"y1":9.81},"cls":"equity"},{"t":"BMNR","n":"Bitmine","r":{"m1":-21.96,"m3":3.65,"m6":-15.38,"y1":-54.71},"cls":"equity"},{"t":"BWXT","n":"BWX Tech","r":{"m1":-15.96,"m3":-29.23,"m6":-41.79,"y1":-39.67},"cls":"equity"},{"t":"CBOE","n":"Cboe","r":{"m1":20.13,"m3":23.95,"m6":1.35,"y1":40.52},"cls":"equity"},{"t":"CCJ","n":"Cameco","r":{"m1":-18.16,"m3":-26.73,"m6":-38.93,"y1":-25.14},"cls":"equity"},{"t":"CEG","n":"Constellation","r":{"m1":-12.32,"m3":-7.57,"m6":-17.68,"y1":-31.19},"cls":"equity"},{"t":"CGNX","n":"Cognex","r":{"m1":-21.56,"m3":-25.76,"m6":-27.23,"y1":17.98},"cls":"equity"},{"t":"CIFR","n":"Cipher Mining","r":{"m1":-51.48,"m3":-59.89,"m6":-68.13,"y1":-73.49},"cls":"equity"},{"t":"CLSK","n":"CleanSpark","r":{"m1":-42.05,"m3":-46.85,"m6":-56.62,"y1":-62.85},"cls":"equity"},{"t":"CME","n":"CME Group","r":{"m1":10.65,"m3":16.02,"m6":8.76,"y1":14.14},"cls":"equity"},{"t":"COIN","n":"Coinbase","r":{"m1":-21.65,"m3":-9.36,"m6":-33.01,"y1":-57.8},"cls":"equity"},{"t":"CORZ","n":"Core Scientific","r":{"m1":-23.44,"m3":-39.51,"m6":-48.69,"y1":-46.06},"cls":"equity"},{"t":"CRCL","n":"Circle","r":{"m1":-16.03,"m3":1.24,"m6":-40.28,"y1":-39.95},"cls":"equity"},{"t":"CRWV","n":"CoreWeave","r":{"m1":-43.12,"m3":-47.39,"m6":-59.35,"y1":-59.45},"cls":"equity"},{"t":"DELL","n":"Dell","r":{"m1":-42.82,"m3":-28.25,"m6":26.13,"y1":115.56},"cls":"equity"},{"t":"DKNG","n":"DraftKings","r":{"m1":-6.84,"m3":-23.73,"m6":-27.47,"y1":-33.7},"cls":"equity"},{"t":"FLUT","n":"Flutter","r":{"m1":0.15,"m3":-13.33,"m6":-19.26,"y1":-62.21},"cls":"equity"},{"t":"GD","n":"General Dynamics","r":{"m1":7.32,"m3":-10.58,"m6":2.17,"y1":3.25},"cls":"equity"},{"t":"GEV","n":"GE Vernova","r":{"m1":-22.54,"m3":-21.87,"m6":-25.58,"y1":38.31},"cls":"equity"},{"t":"GPN","n":"Global Payments","r":{"m1":17.68,"m3":13.08,"m6":40.77,"y1":22.98},"cls":"equity"},{"t":"GS","n":"Goldman Sachs","r":{"m1":-1.9,"m3":-16.31,"m6":-7.55,"y1":9.17},"cls":"equity"},{"t":"HOOD","n":"Robinhood","r":{"m1":-24.39,"m3":-14.4,"m6":5.04,"y1":-43.21},"cls":"equity"},{"t":"HUT","n":"Hut 8","r":{"m1":-33.85,"m3":-38.54,"m6":-46.53,"y1":12.02},"cls":"equity"},{"t":"ICE","n":"Intercontinental Exch.","r":{"m1":10.89,"m3":14.43,"m6":10.56,"y1":17.82},"cls":"equity"},{"t":"ISRG","n":"Intuitive Surgical","r":{"m1":9,"m3":15.1,"m6":0.61,"y1":-17.46},"cls":"equity"},{"t":"JPM","n":"JPMorgan","r":{"m1":0.93,"m3":-7.03,"m6":10.72,"y1":7.32},"cls":"equity"},{"t":"KTOS","n":"Kratos","r":{"m1":-16.29,"m3":-43.77,"m6":-39.37,"y1":-54.66},"cls":"equity"},{"t":"LEU","n":"Centrus","r":{"m1":-26.38,"m3":-44.76,"m6":-49.55,"y1":-67.89},"cls":"equity"},{"t":"LHX","n":"L3Harris","r":{"m1":9.7,"m3":-10.3,"m6":-13.27,"y1":-9.48},"cls":"equity"},{"t":"LMT","n":"Lockheed","r":{"m1":11.65,"m3":-5.98,"m6":11.96,"y1":19.85},"cls":"equity"},{"t":"MA","n":"Mastercard","r":{"m1":13.56,"m3":15.9,"m6":31.73,"y1":17.96},"cls":"equity"},{"t":"MARA","n":"Mara Holdings","r":{"m1":-35.92,"m3":-33.58,"m6":-50.93,"y1":-62.93},"cls":"equity"},{"t":"MSTR","n":"Strategy","r":{"m1":-14.88,"m3":32.47,"m6":-31.27,"y1":-49.44},"cls":"equity"},{"t":"MU","n":"Micron","r":{"m1":-33.39,"m3":-19.86,"m6":-7.61,"y1":190.53},"cls":"equity"},{"t":"NBIS","n":"Nebius","r":{"m1":-41.06,"m3":-29.67,"m6":-26.86,"y1":10.68},"cls":"equity"},{"t":"NDAQ","n":"Nasdaq","r":{"m1":15.97,"m3":12.03,"m6":20.48,"y1":25.2},"cls":"equity"},{"t":"NNE","n":"Nano Nuclear","r":{"m1":-27.2,"m3":-40.17,"m6":-59.53,"y1":-74.44},"cls":"equity"},{"t":"NOC","n":"Northrop","r":{"m1":8.37,"m3":-9.15,"m6":-4.46,"y1":-7.97},"cls":"equity"},{"t":"NVDA","n":"Nvidia","r":{"m1":-19.02,"m3":-14.21,"m6":-13.27,"y1":-4.39},"cls":"equity"},{"t":"OKLO","n":"Oklo","r":{"m1":-31.88,"m3":-47.07,"m6":-67.52,"y1":-80.57},"cls":"equity"},{"t":"ONDS","n":"Ondas","r":{"m1":-22.04,"m3":-42.64,"m6":-41.06,"y1":-11},"cls":"equity"},{"t":"PATH","n":"UiPath","r":{"m1":-1.89,"m3":-16.61,"m6":20.48,"y1":-10.65},"cls":"equity"},{"t":"PLTR","n":"Palantir","r":{"m1":-19.32,"m3":-8.47,"m6":16.39,"y1":-14.65},"cls":"equity"},{"t":"PYPL","n":"PayPal","r":{"m1":7.67,"m3":0.29,"m6":30.57,"y1":-12.96},"cls":"equity"},{"t":"RCAT","n":"Red Cat","r":{"m1":-31.64,"m3":-59.6,"m6":-61.04,"y1":-57.02},"cls":"equity"},{"t":"RIOT","n":"Riot Platforms","r":{"m1":-0.77,"m3":-13.87,"m6":-30.61,"y1":-11.91},"cls":"equity"},{"t":"ROK","n":"Rockwell","r":{"m1":-13.42,"m3":-13.64,"m6":-17.19,"y1":3.66},"cls":"equity"},{"t":"RTX","n":"RTX","r":{"m1":2.83,"m3":-15.43,"m6":7.63,"y1":8.93},"cls":"equity"},{"t":"SBET","n":"SharpLink","r":{"m1":-29.17,"m3":0.97,"m6":-16.13,"y1":-48.56},"cls":"equity"},{"t":"SERV","n":"Serve Robotics","r":{"m1":-27.64,"m3":-34.55,"m6":-63.28,"y1":-72.43},"cls":"equity"},{"t":"SMCI","n":"Super Micro","r":{"m1":-32.76,"m3":-8.58,"m6":-18.69,"y1":-31.57},"cls":"equity"},{"t":"SMR","n":"NuScale","r":{"m1":-30.6,"m3":-44.66,"m6":-59.52,"y1":-86.6},"cls":"equity"},{"t":"SOFI","n":"SoFi","r":{"m1":3.84,"m3":-10.54,"m6":2.92,"y1":-46.09},"cls":"equity"},{"t":"SYM","n":"Symbotic","r":{"m1":-12.46,"m3":-8.2,"m6":-29.59,"y1":-52.84},"cls":"equity"},{"t":"TER","n":"Teradyne","r":{"m1":-45.27,"m3":-40.23,"m6":-39.35,"y1":16.32},"cls":"equity"},{"t":"TLN","n":"Talen","r":{"m1":-5.73,"m3":-1.33,"m6":-12.35,"y1":-16.07},"cls":"equity"},{"t":"TSLA","n":"Tesla","r":{"m1":-4.47,"m3":8.26,"m6":-16.37,"y1":-22.47},"cls":"equity"},{"t":"V","n":"Visa","r":{"m1":12.68,"m3":16.97,"m6":32.58,"y1":24.29},"cls":"equity"},{"t":"VRT","n":"Vertiv","r":{"m1":-24.97,"m3":-32.3,"m6":-46.21,"y1":-4.12},"cls":"equity"},{"t":"VST","n":"Vistra","r":{"m1":-20.07,"m3":-12.65,"m6":-15.52,"y1":-34.1},"cls":"equity"},{"t":"XYZ","n":"Block","r":{"m1":13.62,"m3":8.23,"m6":14.2,"y1":16.06},"cls":"equity"}];
+function assetCls(t){const p=POOL.find(x=>x.t===t);return p?p.cls:null;}
+function basketCls(i){const c=(i.holds||[]).map(h=>assetCls(h.t)).filter(Boolean);if(!c.length)return null;const cr=c.filter(x=>x==="crypto").length;return cr>=c.length/2?"crypto":"equity";}
+function poolMatches(i,q){const have=new Set((i.holds||[]).map(h=>h.t));q=(q||"").trim().toLowerCase();let list=POOL.filter(p=>!have.has(p.t));if(q){list=list.filter(p=>p.t.toLowerCase().includes(q)||p.n.toLowerCase().includes(q));}else{const bc=basketCls(i);if(bc)list=list.filter(p=>p.cls===bc);}return list.slice(0,12);}
+function resHTML(i,q){const ms=poolMatches(i,q);if(!ms.length)return `<div style="font-size:11px;color:var(--muted);padding:3px 2px">${(q||"").trim()?"No matches in the asset pool.":"Type a ticker or name to search the pool."}</div>`;return ms.map(p=>{const y=p.r&&p.r.y1!=null?((p.r.y1>=0?"+":"")+p.r.y1+"%"):"n/a";const yc=p.r&&p.r.y1!=null?(p.r.y1>=0?"var(--good)":"var(--crit)"):"var(--muted)";return `<button class="hadd" data-add="${p.t}" title="Add ${p.t} · 12M ${y}"><span class="at">${p.t}</span><span class="an">${p.n}</span><span class="ay" style="color:${yc}">${y}</span><span class="acl">${p.cls==="crypto"?"CX":"EQ"}</span></button>`;}).join("");}
+let W={...DEFW}, state={q:"",stages:new Set(),cats:new Set(),sort:"composite",open:new Set()};
+try{const s=JSON.parse(localStorage.getItem("ip_w")||"null");if(s)W={...DEFW,...s};}catch(e){}
+
+const $=s=>document.querySelector(s), ce=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
+function composite(d){let tot=0,wsum=0;for(const[k]of DIMS){tot+=d[k]*(W[k]||0);wsum+=(W[k]||0);}return wsum?tot/wsum:0;}
+function computeRets(holds){const out={};for(const k of ["m1","m3","m6","y1"]){let num=0,wd=0,wt=0;for(const h of holds){wt+=h.w;if(h.r&&h.r[k]!=null){num+=h.w*h.r[k];wd+=h.w;}}out[k]={v:wd>0?+(num/wd).toFixed(1):null,c:wt>0?Math.round(wd/wt*100):0};}return out;}
+function scColor(v){return v>=4.2?"var(--good)":v>=3.3?"var(--warn)":"var(--crit)";}
+const STAGES=[["pitch","Pitch"],["validate","Validate"],["watch","Watch"],["custom","Custom"]];
+const CATS=[...new Set(IDEAS.map(i=>i.cat))];
+IDEAS.forEach(i=>{if(i.holds&&!i.holds0)i.holds0=JSON.parse(JSON.stringify(i.holds));});
+const SRCHQ={};
+
+function buildWeights(){
+  const box=$("#weights");box.innerHTML="";
+  for(const[k,lab]of DIMS){
+    const w=ce("div","w");
+    w.innerHTML=`<label for="w_${k}">${lab}<span>${W[k]}</span></label><input type="range" id="w_${k}" min="0" max="40" step="5" value="${W[k]}">`;
+    w.querySelector("input").addEventListener("input",e=>{W[k]=+e.target.value;w.querySelector("span").textContent=W[k];try{localStorage.setItem("ip_w",JSON.stringify(W))}catch(_){}render();});
+    box.appendChild(w);
+  }
+}
+function buildFilters(){
+  const sf=$("#stageFilter");sf.innerHTML="";
+  STAGES.forEach(([v,l])=>{const c=ce("button","chip");c.textContent=l;c.setAttribute("aria-pressed","false");
+    c.onclick=()=>{c.getAttribute("aria-pressed")==="true"?(state.stages.delete(v),c.setAttribute("aria-pressed","false")):(state.stages.add(v),c.setAttribute("aria-pressed","true"));render();};sf.appendChild(c);});
+  const cf=$("#catFilter");cf.innerHTML="";
+  CATS.forEach(v=>{const c=ce("button","chip");c.textContent=v;c.setAttribute("aria-pressed","false");
+    c.onclick=()=>{c.getAttribute("aria-pressed")==="true"?(state.cats.delete(v),c.setAttribute("aria-pressed","false")):(state.cats.add(v),c.setAttribute("aria-pressed","true"));render();};cf.appendChild(c);});
+}
+function kpis(rows){
+  const el=$("#kpis");
+  const byStage=s=>IDEAS.filter(i=>i.stage===s).length;
+  const top=[...IDEAS].sort((a,b)=>composite(b.s)-composite(a.s))[0];
+  const data=[["Candidates",IDEAS.length,""],["Pitch-ready",byStage("pitch"),"accent"],["Validating",byStage("validate"),""],["Watching",byStage("watch"),""],["Top theme",top.tkr,"accent"]];
+  el.innerHTML="";
+  data.forEach(([k,n,cls])=>{const d=ce("div","kpi "+(cls||""));d.innerHTML=`<div class="n">${n}</div><div class="k">${k}</div>`;el.appendChild(d);});
+}
+function render(){
+  let rows=IDEAS.map(i=>({i,c:composite(i.s)}));
+  if(state.q){const q=state.q.toLowerCase();rows=rows.filter(({i})=>(i.name+i.tkr+i.method+i.cat+i.thesis).toLowerCase().includes(q));}
+  if(state.stages.size)rows=rows.filter(({i})=>state.stages.has(i.stage));
+  if(state.cats.size)rows=rows.filter(({i})=>state.cats.has(i.cat));
+  rows.sort((a,b)=> state.sort==="name"?a.i.name.localeCompare(b.i.name): state.sort==="momentum"?b.i.s.momentum-a.i.s.momentum: state.sort==="revenue"?b.i.s.revenue-a.i.s.revenue: b.c-a.c);
+  const box=$("#cards");box.innerHTML="";
+  if(!rows.length){box.innerHTML='<div class="empty">No candidates match these filters.</div>';kpis();return;}
+  rows.forEach(({i,c},idx)=>{
+    const card=ce("div","card");if(state.open.has(i.tkr))card.classList.add("open");
+    const col=scColor(c);
+    const head=ce("div","card-head");
+    head.innerHTML=`<div class="rank mono">${String(idx+1).padStart(2,"0")}</div>
+      <div class="idhead"><div class="name">${i.name} <span class="tkr">${i.tkr}</span>${i.flag?'<span class="flagmark" title="Has a flag"></span>':''}</div>
+        <div class="meta"><span class="cat">${i.cat}</span><span class="dot"></span><span>${i.wrap}</span><span class="dot"></span><span>${i.exch}</span></div></div>
+      <div class="score"><div class="big" style="color:${i.custom?'var(--muted)':col}">${i.custom?'—':c.toFixed(1)}</div><div class="lab">${i.stage}</div></div>`;
+    head.querySelector(".lab").className="stage "+i.stage;
+    head.onclick=()=>{card.classList.toggle("open");card.classList.contains("open")?state.open.add(i.tkr):state.open.delete(i.tkr);};
+    card.appendChild(head);
+    const body=ce("div","body");
+    const left=ce("div");left.style.minWidth="0";
+    left.innerHTML=`<div class="field"><div class="ft">Thesis</div><div class="fv">${i.thesis}</div></div>
+      <div class="field"><div class="ft">Methodology sketch</div><div class="fv">${i.method}</div></div>
+      ${i.holds?`<div class="field"><div class="ft">Holdings &amp; weights — ${i.wmethod} · <button class="wreset" data-tkr="${i.tkr}">reset</button> · <span data-wtot="${i.tkr}" style="color:var(--muted)">Σ ${i.holds.reduce((s,h)=>s+h.w,0)}%</span></div><div class="holds">${i.holds.map((h,hi)=>`<div class="hrow"><span class="htkr">${h.t}<em>${h.n}</em></span><input class="wsl" type="range" min="0" max="50" step="1" value="${h.w}" data-tkr="${i.tkr}" data-hi="${hi}" aria-label="${h.t} weight"><span class="hw" data-wlab="${i.tkr}-${hi}">${h.w}%</span><button class="hx" data-hi="${hi}" title="Remove ${h.t}">×</button></div>`).join("")}</div><div class="addwrap"><input class="hsearch" data-tkr="${i.tkr}" placeholder="+ search assets to add (ticker or name)…" value="${(SRCHQ[i.tkr]||'').replace(/"/g,'&quot;')}"><div class="hres" data-res="${i.tkr}">${resHTML(i,SRCHQ[i.tkr]||'')}</div></div><div class="hnote">Drag to re-weight, × to remove, search to add — returns recompute live. New names enter at an indicative weight; Σ is the basket total (need not equal 100% to compare). Reset restores the seed basket.</div></div>`:""}
+      ${i.holds?(()=>{const R=computeRets(i.holds);return `<div class="field"><div class="ft">Trailing returns — indicative backtest</div><div class="rets">${[["1M","m1"],["3M","m3"],["6M","m6"],["12M","y1"]].map(([l,k])=>{const o=R[k];const v=o.v;const col=v==null?"var(--muted)":v>=0?"var(--good)":"var(--crit)";return `<div class="rcell"><div class="rl">${l}</div><div class="rv" data-rv="${i.tkr}-${k}" style="color:${col}">${v==null?"n/a":(v>=0?"+":"")+v+"%"}</div><div class="rc" data-rc="${i.tkr}-${k}">${o.c!=null?o.c+"% cov":""}</div></div>`;}).join("")}</div><div class="hnote">Weighted backtest at the weights above — drag a slider to recompute. The % under each figure is the share of basket weight with price history for that window. As of ${new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}. Past performance is not indicative of future results.</div></div>`;})():""}
+      ${i.eqan?`<div class="field"><div class="ft">Equity analogs — listed proxies</div><div class="fv">${i.eqan}</div></div>`:""}
+      ${i.cat_?`<div class="field"><div class="ft">Why now</div><div class="fv">${i.cat_}</div></div>`:""}
+      ${i.diff?`<div class="field"><div class="ft">Differentiation</div><div class="fv">${i.diff}</div></div>`:""}
+      ${i.flag?`<div class="flagbox"><div class="ft">⚑ Flag</div><div>${i.flag}</div></div>`:""}
+      ${i.custom?`<button class="delbasket" data-del="${i.tkr}">Delete this basket</button>`:""}`;
+    const right=ce("div");
+    let sb='';
+    if(!i.custom){sb='<div class="scorebox">';for(const[k,lab]of DIMS){const v=i.s[k];sb+=`<div class="sr"><div class="sl">${lab}</div><div class="bar"><i style="width:${v/5*100}%;background:${scColor(v)}"></i></div><div class="sv mono">${v}</div></div>`;}sb+='</div>';}
+    if(i.custom)sb+=`<div class="wrp" style="margin-bottom:6px"><b>Custom basket</b> — tracked on returns</div>`;
+    sb+=`<div class="wrp"><b>Wrapper</b> ${i.wrap}</div><div class="wrp"><b>Exchanges</b> ${i.exch}</div><div class="wrp"><b>Source feed</b> ${i.src}</div>`;
+    right.innerHTML=sb;
+    body.appendChild(left);body.appendChild(right);card.appendChild(body);
+    card.querySelectorAll(".wsl").forEach(sl=>sl.addEventListener("input",ev=>{const hi=+ev.target.dataset.hi;i.holds[hi].w=+ev.target.value;const wl=card.querySelector(`[data-wlab="${i.tkr}-${hi}"]`);if(wl)wl.textContent=i.holds[hi].w+"%";const tt=card.querySelector(`[data-wtot="${i.tkr}"]`);if(tt)tt.textContent="Σ "+i.holds.reduce((s,h)=>s+h.w,0)+"%";const R=computeRets(i.holds);for(const k of ["m1","m3","m6","y1"]){const cell=card.querySelector(`[data-rv="${i.tkr}-${k}"]`),cc=card.querySelector(`[data-rc="${i.tkr}-${k}"]`),o=R[k];if(cell){cell.style.color=o.v==null?"var(--muted)":o.v>=0?"var(--good)":"var(--crit)";cell.textContent=o.v==null?"n/a":(o.v>=0?"+":"")+o.v+"%";}if(cc)cc.textContent=o.c!=null?o.c+"% cov":"";}}));
+    const rb=card.querySelector(`.wreset[data-tkr="${i.tkr}"]`);if(rb)rb.addEventListener("click",ev=>{ev.stopPropagation();if(i.holds0)i.holds=JSON.parse(JSON.stringify(i.holds0));delete SRCHQ[i.tkr];render();});
+    const dl=card.querySelector('.delbasket[data-del="'+i.tkr+'"]');if(dl)dl.addEventListener("click",ev=>{ev.stopPropagation();deleteBasket(i.tkr);});
+    card.querySelectorAll(".hx").forEach(b=>b.addEventListener("click",ev=>{ev.stopPropagation();i.holds.splice(+b.dataset.hi,1);render();}));
+    const se=card.querySelector(`.hsearch[data-tkr="${i.tkr}"]`),hr=card.querySelector(`[data-res="${i.tkr}"]`);
+    if(se){se.addEventListener("input",ev=>{SRCHQ[i.tkr]=ev.target.value;if(hr)hr.innerHTML=resHTML(i,SRCHQ[i.tkr]);});se.addEventListener("click",ev=>ev.stopPropagation());}
+    if(hr)hr.addEventListener("click",ev=>{const btn=ev.target.closest("[data-add]");if(!btn)return;ev.stopPropagation();const p=POOL.find(x=>x.t===btn.dataset.add);if(!p)return;const avg=i.holds.length?i.holds.reduce((s,h)=>s+h.w,0)/i.holds.length:5;i.holds.push({t:p.t,n:p.n,w:Math.max(3,Math.min(15,Math.round(avg||5))),r:p.r});render();const ns=document.querySelector(`.hsearch[data-tkr="${i.tkr}"]`);if(ns)ns.focus();});
+    box.appendChild(card);
+  });
+  kpis(rows);
+}
+// theme
+(function(){const b=$("#themeBtn");let t=null;try{t=localStorage.getItem("ip_theme")}catch(_){}
+  if(t)document.documentElement.setAttribute("data-theme",t);
+  b.onclick=()=>{const cur=document.documentElement.getAttribute("data-theme");
+    const mq=window.matchMedia("(prefers-color-scheme:dark)").matches;const next=(cur?cur==="dark":mq)?"light":"dark";
+    document.documentElement.setAttribute("data-theme",next);try{localStorage.setItem("ip_theme",next)}catch(_){}};
+})();
+$("#q").addEventListener("input",e=>{state.q=e.target.value;render();});
+$("#sort").addEventListener("change",e=>{state.sort=e.target.value;render();});
+$("#resetW").onclick=()=>{W={...DEFW};try{localStorage.setItem("ip_w",JSON.stringify(W))}catch(_){}buildWeights();render();};
+const nextScan=new Date(Date.now()+7*864e5);
+$("#scanline").innerHTML=`<b style="color:var(--ink)">Last scan</b> ${new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})} · <b style="color:var(--ink)">Next scan</b> ${nextScan.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})} (weekly) · 16 candidates incl. your 6 Defiance crypto baskets`;
+/* ---- on-the-fly basket builder ---- */
+const THEMES={
+ "ai":["TAO","RENDER","AKT","VIRTUALS","LPT","GRASS","VVV","CHIP","KLED","ORBIO","B3","BNKR","NVDA","AMD","AVGO","CRWV","NBIS","APLD","SMCI","MU","DELL","ANET","VRT","PLTR"],
+ "compute":["NVDA","AMD","AVGO","CRWV","NBIS","APLD","SMCI","MU","DELL","ANET","VRT","AKT","RENDER","TAO"],
+ "defi":["AAVE","UNI","ENA","JUP","AERO","SKY","SYRUP","LIT","MORPHO","PENDLE","RAY","KMNO","ETHFI","LIDO","JTO","ONDO","HYPE","PUMP"],
+ "infra":["BTC","ETH","SOL","BNB","TRX","AVAX","NEAR","POLY","ARB","CC","SUI","APT","ALGO","LINK","PYTH"],
+ "l1":["BTC","ETH","SOL","BNB","TRX","AVAX","NEAR","POLY","ARB","SUI","APT","ALGO"],
+ "payments":["V","MA","PYPL","XYZ","GPN","SOFI","HOOD","CRCL","COIN"],
+ "fintech":["V","MA","PYPL","XYZ","GPN","SOFI","HOOD","CRCL","COIN","NDAQ"],
+ "stablecoin":["CRCL","COIN","PYPL","V","MA","XYZ"],
+ "exchange":["COIN","HOOD","ICE","CME","NDAQ","CBOE","BNB","HYPE"],
+ "defense":["PLTR","AVAV","KTOS","RTX","LMT","NOC","GD","LHX","AXON","RCAT","ONDS"],
+ "drones":["AVAV","KTOS","RCAT","ONDS","AXON"],
+ "nuclear":["CEG","GEV","VST","CCJ","SMR","OKLO","BWXT","LEU","TLN","NNE"],
+ "power":["CEG","GEV","VST","TLN","VRT","OKLO","SMR"],
+ "energy":["CEG","GEV","VST","CCJ","SMR","OKLO","BWXT","LEU","TLN","NNE"],
+ "robotics":["TSLA","NVDA","ISRG","ROK","TER","SYM","PATH","CGNX","SERV"],
+ "humanoid":["TSLA","NVDA","ISRG","ROK","TER","SYM","SERV"],
+ "privacy":["XMR","ZEC","ZAMA"],
+ "depin":["GEOD","HNT","RENDER"],
+ "rwa":["BLK","COIN","ICE","HOOD","SOFI","JPM","APO","GS","ONDO"],
+ "tokenization":["BLK","COIN","ICE","ONDO","JPM"],
+ "treasury":["MSTR","MARA","RIOT","BMNR","SBET","HUT","CIFR","CORZ","CLSK"],
+ "mining":["MSTR","MARA","RIOT","HUT","CIFR","CORZ","CLSK"],
+ "bitcoin":["BTC","MSTR","MARA","RIOT","HUT","CIFR","CORZ","CLSK"],
+ "launchpad":["PUMP","VVV","BNKR"],
+ "memecoin":["PUMP","VVV","BNKR"]
+};
+let bSel=[],bQuery="",AI_SAMPLE=null;
+const $b=id=>document.getElementById(id);
+function themeMatch(q){q=(q||"").trim().toLowerCase();if(!q)return [];const set=new Set();for(const k in THEMES){if(k.includes(q)||q.includes(k))THEMES[k].forEach(t=>set.add(t));}POOL.forEach(p=>{if(p.t.toLowerCase().includes(q)||p.n.toLowerCase().includes(q))set.add(p.t);});return [...set].map(t=>POOL.find(p=>p.t===t)).filter(Boolean);}
+function bResHTML(){const have=new Set(bSel);const ms=themeMatch(bQuery).filter(p=>!have.has(p.t)).slice(0,40);if(!bQuery.trim())return '<div style="font-size:11.5px;color:var(--muted);padding:4px 2px">Type a theme (AI infra, defi, nuclear…) or a ticker to surface companies.</div>';if(!ms.length)return '<div style="font-size:11.5px;color:var(--muted);padding:4px 2px">No pool matches — try another term.</div>';return ms.map(p=>{const y=p.r&&p.r.y1!=null?((p.r.y1>=0?"+":"")+p.r.y1+"%"):"n/a";const yc=p.r&&p.r.y1!=null?(p.r.y1>=0?"var(--good)":"var(--crit)"):"var(--muted)";return `<button class="hadd" data-badd="${p.t}"><span class="at">${p.t}</span><span class="an">${p.n}</span><span class="ay" style="color:${yc}">${y}</span><span class="acl">${p.cls==="crypto"?"CX":"EQ"}</span></button>`;}).join("");}
+function bSelHTML(){if(!bSel.length)return '<span style="font-size:11.5px;color:var(--muted)">No constituents yet — add some below.</span>';return bSel.map(t=>{const p=POOL.find(x=>x.t===t);return `<span class="bchip"><b>${t}</b> ${p?p.n:""}<button data-brem="${t}" title="Remove">×</button></span>`;}).join("");}
+function bUpdate(){const r=$b('bRes');if(r)r.innerHTML=bResHTML();const s=$b('bSelWrap');if(s)s.innerHTML=bSelHTML();const c=$b('bCreate');if(c)c.disabled=!(($b('bName')&&$b('bName').value.trim())&&bSel.length);}
+function setBMsg(m){const el=$b('bMsg');if(el)el.textContent=m||"";}
+function openBuilder(){const B=$b('builder');if(!B)return;if(B.classList.contains('open')){closeBuilder();return;}bSel=[];bQuery="";
+ B.innerHTML='<h3>Create a basket on the fly</h3><div class="bsub">Name it, type a theme to surface companies, add from the pool, then adjust weights and watch the returns.</div>'
+ +'<div class="brow"><input class="binput" id="bName" placeholder="Basket name (e.g. Edge AI Infra)"><input class="binput" id="bTheme" placeholder="Theme or ticker (e.g. AI infra, defi, nuclear)"><button class="baibtn" id="bAI">✦ AI suggest</button></div>'
+ +'<div class="bsel" id="bSelWrap"></div><div class="bres" id="bRes"></div>'
+ +'<div class="bactions"><button class="bcreate" id="bCreate" disabled>Create basket</button><button class="bcancel" id="bCancel">Cancel</button><span class="bmsg" id="bMsg"></span></div>';
+ B.classList.add('open');
+ $b('bName').addEventListener('input',bUpdate);
+ $b('bTheme').addEventListener('input',e=>{bQuery=e.target.value;bUpdate();});
+ $b('bRes').addEventListener('click',e=>{const t=e.target.closest('[data-badd]');if(!t)return;const tk=t.dataset.badd;if(!bSel.includes(tk))bSel.push(tk);bUpdate();});
+ $b('bSelWrap').addEventListener('click',e=>{const t=e.target.closest('[data-brem]');if(!t)return;bSel=bSel.filter(x=>x!==t.dataset.brem);bUpdate();});
+ $b('bCreate').addEventListener('click',createBasket);
+ $b('bCancel').addEventListener('click',closeBuilder);
+ const ai=$b('bAI');ai.addEventListener('click',bAISuggest);if(AI_SAMPLE)ai.style.display='inline-block';
+ bUpdate();$b('bName').focus();B.scrollIntoView({block:'nearest'});
+}
+function closeBuilder(){const B=$b('builder');if(B){B.classList.remove('open');B.innerHTML='';}}
+function createBasket(){const nm=$b('bName').value.trim();if(!nm||!bSel.length)return;let base=nm.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)||'CUSTOM';let tk=base,i=2;const taken=new Set(IDEAS.map(x=>x.tkr));while(taken.has(tk)){tk=base.slice(0,5)+i;i++;}
+ const n=bSel.length,w=Math.max(1,Math.round(100/n));
+ const holds=bSel.map(t=>{const p=POOL.find(x=>x.t===t);return {t:p.t,n:p.n,w:w,r:p.r};});
+ const idea={name:nm,tkr:tk,cat:"Custom",stage:"custom",wrap:"Custom build",exch:"—",s:{momentum:3,investability:3,differentiation:3,feasibility:3,revenue:3,fit:3},thesis:($b('bTheme').value.trim()||"Custom basket built on the fly."),method:"Assembled on the fly from the candidate pool — equal-weighted to start; adjust the sliders freely.",cat_:"",diff:"",wmethod:"Equal weight to start",holds:holds,src:"Custom (CK)",custom:true};
+ idea.holds0=JSON.parse(JSON.stringify(idea.holds));IDEAS.push(idea);state.open.add(tk);saveCustoms();closeBuilder();render();
+ setTimeout(()=>{const el=[...document.querySelectorAll('.card')].find(c=>c.querySelector('.tkr')&&c.querySelector('.tkr').textContent===tk);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},60);}
+function deleteBasket(tk){const i=IDEAS.findIndex(x=>x.tkr===tk&&x.custom);if(i<0)return;IDEAS.splice(i,1);state.open.delete(tk);saveCustoms();render();}
+function saveCustoms(){try{localStorage.setItem('ip_custom',JSON.stringify(IDEAS.filter(x=>x.custom).map(x=>({name:x.name,tkr:x.tkr,thesis:x.thesis,holds:x.holds.map(h=>({t:h.t,n:h.n,w:h.w}))}))));}catch(_){}}
+function loadCustoms(){try{const arr=JSON.parse(localStorage.getItem('ip_custom')||'[]');arr.forEach(c=>{if(IDEAS.some(x=>x.tkr===c.tkr))return;const holds=(c.holds||[]).map(h=>{const p=POOL.find(x=>x.t===h.t);return {t:h.t,n:h.n||(p?p.n:h.t),w:h.w,r:p?p.r:null};});const idea={name:c.name,tkr:c.tkr,cat:"Custom",stage:"custom",wrap:"Custom build",exch:"—",s:{momentum:3,investability:3,differentiation:3,feasibility:3,revenue:3,fit:3},thesis:c.thesis||"Custom basket.",method:"Assembled on the fly from the candidate pool.",cat_:"",diff:"",wmethod:"Custom weight",holds:holds,src:"Custom (CK)",custom:true};idea.holds0=JSON.parse(JSON.stringify(idea.holds));IDEAS.push(idea);});}catch(_){}}
+async function bAISuggest(){if(!AI_SAMPLE){setBMsg('AI suggest only runs inside the Claude artifact.');return;}const theme=($b('bTheme').value.trim()||$b('bName').value.trim());if(!theme){setBMsg('Type a theme first.');return;}const btn=$b('bAI');btn.disabled=true;setBMsg('Asking Claude…');try{const cands=POOL.map(p=>p.t+" "+p.n).join(", ");const r=await AI_SAMPLE.json('You assemble thematic investment baskets. From ONLY this candidate list, choose 6 to 12 tickers that best fit the theme "'+theme+'". Return strict JSON {"tickers":["TK1","TK2"]} using tickers exactly as written in the list. Candidates: '+cands);const picks=((r&&r.tickers)||[]).filter(t=>POOL.some(p=>p.t===t)&&!bSel.includes(t));if(!picks.length){setBMsg('No pool matches returned — try a clearer theme or add manually.');}else{picks.forEach(t=>bSel.push(t));bUpdate();setBMsg('Added '+picks.length+' names — edit before creating.');}}catch(e){setBMsg((e&&e.code==='not_granted')?'AI not available for this viewer.':'AI suggest failed — add manually.');}btn.disabled=false;}
+async function initAI(){try{if(window.claude&&claude.use){const s=await claude.use('sample');if(s){AI_SAMPLE=s;const ai=$b('bAI');if(ai)ai.style.display='inline-block';}}}catch(_){}}
+function wireNewBtn(){const b=$b('newBasketBtn');if(b)b.addEventListener('click',openBuilder);}
+loadCustoms();buildWeights();buildFilters();render();wireNewBtn();initAI();
+</script>
+
+</body>
+</html>
