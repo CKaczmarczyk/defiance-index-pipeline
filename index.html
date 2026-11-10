@@ -182,6 +182,9 @@ footer a{color:var(--accent)}
 .bmsg{font-size:11.5px;color:var(--muted)}
 .delbasket{margin-top:10px;background:none;border:0;color:var(--crit);font-size:11px;cursor:pointer;text-decoration:underline;padding:0}
 .stage.custom{background:var(--accent)}
+.createtile{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--surface);border:1.5px dashed var(--accent);border-radius:var(--r);padding:22px;margin-top:2px;cursor:pointer;color:var(--accent);font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:.02em;transition:background .12s}
+.createtile:hover{background:var(--accent-soft)}
+.createtile .plus{font-size:21px;line-height:1}
 </style>
 </head>
 <body>
@@ -218,8 +221,8 @@ footer a{color:var(--accent)}
     <button class="reset" id="resetW">Reset to defaults</button>
   </aside>
   <div style="min-width:0;display:flex;flex-direction:column">
-    <div class="builder" id="builder"></div>
     <main class="cards" id="cards"></main>
+    <div class="builder" id="builder"></div>
   </div>
 </div>
 
@@ -293,7 +296,7 @@ function render(){
   if(state.cats.size)rows=rows.filter(({i})=>state.cats.has(i.cat));
   rows.sort((a,b)=> state.sort==="name"?a.i.name.localeCompare(b.i.name): state.sort==="momentum"?b.i.s.momentum-a.i.s.momentum: state.sort==="revenue"?b.i.s.revenue-a.i.s.revenue: b.c-a.c);
   const box=$("#cards");box.innerHTML="";
-  if(!rows.length){box.innerHTML='<div class="empty">No candidates match these filters.</div>';kpis();return;}
+  if(!rows.length){box.innerHTML='<div class="empty">No candidates match these filters.</div>';addCreateTile(box);kpis();return;}
   rows.forEach(({i,c},idx)=>{
     const card=ce("div","card");if(state.open.has(i.tkr))card.classList.add("open");
     const col=scColor(c);
@@ -332,6 +335,7 @@ function render(){
     if(hr)hr.addEventListener("click",ev=>{const btn=ev.target.closest("[data-add]");if(!btn)return;ev.stopPropagation();const p=POOL.find(x=>x.t===btn.dataset.add);if(!p)return;const avg=i.holds.length?i.holds.reduce((s,h)=>s+h.w,0)/i.holds.length:5;i.holds.push({t:p.t,n:p.n,w:Math.max(3,Math.min(15,Math.round(avg||5))),r:p.r});render();const ns=document.querySelector(`.hsearch[data-tkr="${i.tkr}"]`);if(ns)ns.focus();});
     box.appendChild(card);
   });
+  addCreateTile(box);
   kpis(rows);
 }
 // theme
@@ -409,6 +413,7 @@ function loadCustoms(){try{const arr=JSON.parse(localStorage.getItem('ip_custom'
 async function bAISuggest(){if(!AI_SAMPLE){setBMsg('AI suggest only runs inside the Claude artifact.');return;}const theme=($b('bTheme').value.trim()||$b('bName').value.trim());if(!theme){setBMsg('Type a theme first.');return;}const btn=$b('bAI');btn.disabled=true;setBMsg('Asking Claude…');try{const cands=POOL.map(p=>p.t+" "+p.n).join(", ");const r=await AI_SAMPLE.json('You assemble thematic investment baskets. From ONLY this candidate list, choose 6 to 12 tickers that best fit the theme "'+theme+'". Return strict JSON {"tickers":["TK1","TK2"]} using tickers exactly as written in the list. Candidates: '+cands);const picks=((r&&r.tickers)||[]).filter(t=>POOL.some(p=>p.t===t)&&!bSel.includes(t));if(!picks.length){setBMsg('No pool matches returned — try a clearer theme or add manually.');}else{picks.forEach(t=>bSel.push(t));bUpdate();setBMsg('Added '+picks.length+' names — edit before creating.');}}catch(e){setBMsg((e&&e.code==='not_granted')?'AI not available for this viewer.':'AI suggest failed — add manually.');}btn.disabled=false;}
 async function initAI(){try{if(window.claude&&claude.use){const s=await claude.use('sample');if(s){AI_SAMPLE=s;const ai=$b('bAI');if(ai)ai.style.display='inline-block';}}}catch(_){}}
 function wireNewBtn(){const b=$b('newBasketBtn');if(b)b.addEventListener('click',openBuilder);}
+function addCreateTile(box){const t=ce('div','createtile');t.innerHTML='<span class="plus">+</span> Create new index';t.onclick=openBuilder;box.appendChild(t);}
 loadCustoms();buildWeights();buildFilters();render();wireNewBtn();initAI();
 </script>
 
